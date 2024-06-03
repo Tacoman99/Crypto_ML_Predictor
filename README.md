@@ -2,7 +2,7 @@
 
 ### Next steps
 
-- [ ] Fix the Dockerized trade producer
-- [ ] Share code with you 
+- [x] Fix the Dockerized trade producer
+- [x] Share code with you 
 - [ ] Add challenges for you to complete
-- [ ] Upload recording.
+- [x] Upload recordings.

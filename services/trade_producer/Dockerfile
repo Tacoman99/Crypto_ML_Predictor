@@ -1,6 +1,6 @@
 FROM python:3.10.3-slim-buster
 
-# strea output to console
+# stream output to console
 ENV PYTHONUNBUFFERED=1
 
 # install poetry inside the container

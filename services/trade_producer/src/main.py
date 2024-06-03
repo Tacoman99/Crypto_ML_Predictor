@@ -5,23 +5,23 @@ from src.kraken_api import KrakenWebsocketTradeAPI
 
 
 def produce_trades(
-    kaka_broker_address: str,
-    kaka_topic_name: str,
+    kafka_broker_addres: str,
+    kafka_topic_name: str,
 ) -> None:
     """
     Reads trades from the Kraken websocket API and saves them into a Kafka topic.
 
     Args:
-        kaka_broker_address (str): The address of the Kafka broker.
-        kaka_topic_name (str): The name of the Kafka topic.
+        kafka_broker_addres (str): The address of the Kafka broker.
+        kafka_topic_name (str): The name of the Kafka topic.
 
     Returns:
         None
     """
-    app = Application(broker_address=kaka_broker_address)
+    app = Application(broker_address=kafka_broker_addres)
 
     # the topic where we will save the trades
-    topic = app.topic(name=kaka_topic_name, value_serializer='json')
+    topic = app.topic(name=kafka_topic_name, value_serializer='json')
 
     # Create an instance of the Kraken API
     kraken_api = KrakenWebsocketTradeAPI(product_id='BTC/USD')
@@ -58,6 +58,7 @@ def produce_trades(
 if __name__ == '__main__':
 
     produce_trades(
-        kaka_broker_address="redpanda-0:9092",
-        kaka_topic_name="trade"
+        kafka_broker_addres="redpanda-0:9092",
+        # kafka_broker_addres="localhost:19092",
+        kafka_topic_name="trade"
     )

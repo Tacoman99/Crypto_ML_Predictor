@@ -1,6 +1,7 @@
+from loguru import logger
 from typing import Dict, List
 
-from loguru import logger
+
 from quixstreams import Application
 
 from src.kraken_api import KrakenWebsocketTradeAPI

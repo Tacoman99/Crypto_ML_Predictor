@@ -8,6 +8,9 @@ RUN pip install poetry==1.8.2
 
 WORKDIR /app
 
+# add /app/src to PYTHONPATH
+ENV PYTHONPATH "${PYTHONPATH}:/app/src"
+
 # copy the pyproject.toml and poetry.lock files into the container
 COPY pyproject.toml poetry.lock /app/
 

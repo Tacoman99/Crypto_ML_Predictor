@@ -1,15 +1,17 @@
-from loguru import logger
+from time import sleep
 from typing import Dict, List
 
-
+from loguru import logger
 from quixstreams import Application
 
+from src import config
 from src.kraken_api import KrakenWebsocketTradeAPI
 
 
 def produce_trades(
     kafka_broker_addres: str,
     kafka_topic_name: str,
+    product_id: str,
 ) -> None:
     """
     Reads trades from the Kraken websocket API and saves them into a Kafka topic.
@@ -17,6 +19,7 @@ def produce_trades(
     Args:
         kafka_broker_addres (str): The address of the Kafka broker.
         kafka_topic_name (str): The name of the Kafka topic.
+        product_id (str): The product ID for which we want to get the trades.
 
     Returns:
         None
@@ -26,8 +29,10 @@ def produce_trades(
     # the topic where we will save the trades
     topic = app.topic(name=kafka_topic_name, value_serializer='json')
 
+    logger.info(f'Creating the Kraken API to fetch data for {product_id}')
+    
     # Create an instance of the Kraken API
-    kraken_api = KrakenWebsocketTradeAPI(product_id='BTC/USD')
+    kraken_api = KrakenWebsocketTradeAPI(product_id=product_id)
 
     logger.info('Creating the producer...')
 
@@ -36,7 +41,6 @@ def produce_trades(
         while True:
             # Get the trades from the Kraken API
             trades: List[Dict] = kraken_api.get_trades()
-            print('Got trades from Kraken')
 
             for trade in trades:
                 # Serialize an event using the defined Topic
@@ -45,16 +49,14 @@ def produce_trades(
                 # Produce a message into the Kafka topic
                 producer.produce(topic=topic.name, value=message.value, key=message.key)
 
-                logger.info('Message sent!')
-
-            from time import sleep
+                logger.info(trade)
 
             sleep(1)
 
 
 if __name__ == '__main__':
     produce_trades(
-        kafka_broker_addres='redpanda-0:9092',
-        # kafka_broker_addres="localhost:19092",
-        kafka_topic_name='trade',
+        kafka_broker_addres=config.kafka_broker_addres,
+        kafka_topic_name=config.kafka_topic_name,
+        product_id=config.product_id,
     )

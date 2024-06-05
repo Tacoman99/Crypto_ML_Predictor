@@ -4,7 +4,8 @@ from typing import Dict, List
 from loguru import logger
 from quixstreams import Application
 
-from src import config
+# from src import config
+from src.config import config
 from src.kraken_api import KrakenWebsocketTradeAPI
 
 
@@ -41,6 +42,13 @@ def produce_trades(
         while True:
             # Get the trades from the Kraken API
             trades: List[Dict] = kraken_api.get_trades()
+
+            # compute the millisecond difference between the current UTC and the
+            # timestamp of the trade, which is trade['timestamp']
+            millisecond_latency = 10
+            # find the appropriate Prometheus client library call to log this metric
+            # to your prometheus server.
+            # TODO.
 
             for trade in trades:
                 # Serialize an event using the defined Topic

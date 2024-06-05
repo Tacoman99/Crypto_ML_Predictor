@@ -43,12 +43,8 @@ def produce_trades(
             # Get the trades from the Kraken API
             trades: List[Dict] = kraken_api.get_trades()
 
-            # compute the millisecond difference between the current UTC and the
-            # timestamp of the trade, which is trade['timestamp']
-            millisecond_latency = 10
-            # find the appropriate Prometheus client library call to log this metric
-            # to your prometheus server.
-            # TODO.
+            # Challenge 1: Send a heartbeat to Prometheus to check the service is alive
+            # Challenge 2: Send an event with trade latency to Prometheus, to monitor the trade latency
 
             for trade in trades:
                 # Serialize an event using the defined Topic
@@ -63,6 +59,16 @@ def produce_trades(
 
 
 if __name__ == '__main__':
+    
+    # You can also pass configuration parameters using the command line
+    # use argparse to parse the kafka_broker_address
+    # and kafka_topic_name from the command line
+    # from argparse import ArgumentParser
+    # parser = ArgumentParser()
+    # parser.add_argument('--kafka_broker_address', type=str, required=False, default='localhost:9092')
+    # parser.add_argument('--kafka_topic_name', type=str, required=True)
+    # args = parser.parse_args()
+
     produce_trades(
         kafka_broker_addres=config.kafka_broker_addres,
         kafka_topic_name=config.kafka_topic_name,

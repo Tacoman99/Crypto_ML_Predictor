@@ -10,56 +10,42 @@ class KrakenWebsocketTradeAPI:
 
     def __init__(
         self,
-        product_id: str,
+        product_ids: List[str],
     ):
-        self.product_id = product_id
+        self.product_ids = product_ids
 
         # establish connection to the Kraken websocket API
         self._ws = create_connection(self.URL)
         logger.info('Connection established')
 
         # subscribe to the trades for the given `product_id`
-        self._subscribe(product_id)
+        self._subscribe(product_ids)
 
-    def _subscribe(self, product_id: str):
+    def _subscribe(self, product_ids: List[str]):
         """
         Establish connection to the Kraken websocket API and subscribe to the trades for the given `product_id`.
         """
-        logger.info(f'Subscribing to trades for {product_id}')
+        logger.info(f'Subscribing to trades for {product_ids}')
         # let's subscribe to the trades for the given `product_id`
         msg = {
             'method': 'subscribe',
             'params': {
                 'channel': 'trade',
-                'symbol': [
-                    product_id,
-                ],
+                'symbol': product_ids,
                 'snapshot': False,
             },
         }
         self._ws.send(json.dumps(msg))
         logger.info('Subscription worked!')
 
-        # dumping the first 2 messages we got from the websocket, because they contain
+        # For each product_id we dump
+        # the first 2 messages we got from the websocket, because they contain
         # no trade data, just confirmation on their end that the subscription was successful
-        _ = self._ws.recv()
-        _ = self._ws.recv()
+        for product_id in product_ids:
+            _ = self._ws.recv()
+            _ = self._ws.recv()
 
     def get_trades(self) -> List[Dict]:
-        # mock_trades = [
-        #     {
-        #         'product_id': 'BTC-USD',
-        #         'price': 60000,
-        #         'volume': 0.01,
-        #         'timestamp': 1630000000
-        #     },
-        #     {
-        #         'product_id': 'BTC-USD',
-        #         'price': 59000,
-        #         'volume': 0.01,
-        #         'timestamp': 1640000000
-        #     }
-        # ]
 
         message = self._ws.recv()
 
@@ -75,7 +61,7 @@ class KrakenWebsocketTradeAPI:
         for trade in message['data']:
             trades.append(
                 {
-                    'product_id': self.product_id,
+                    'product_id': trade['symbol'],
                     'price': trade['price'],
                     'volume': trade['qty'],
                     'timestamp': trade['timestamp'],

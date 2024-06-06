@@ -12,7 +12,7 @@ from src.kraken_api import KrakenWebsocketTradeAPI
 def produce_trades(
     kafka_broker_addres: str,
     kafka_topic_name: str,
-    product_id: str,
+    product_ids: List[str],
 ) -> None:
     """
     Reads trades from the Kraken websocket API and saves them into a Kafka topic.
@@ -20,7 +20,7 @@ def produce_trades(
     Args:
         kafka_broker_addres (str): The address of the Kafka broker.
         kafka_topic_name (str): The name of the Kafka topic.
-        product_id (str): The product ID for which we want to get the trades.
+        product_ids (List[str]): The product IDs for which we want to get the trades.
 
     Returns:
         None
@@ -30,10 +30,10 @@ def produce_trades(
     # the topic where we will save the trades
     topic = app.topic(name=kafka_topic_name, value_serializer='json')
 
-    logger.info(f'Creating the Kraken API to fetch data for {product_id}')
+    logger.info(f'Creating the Kraken API to fetch data for {product_ids}')
     
     # Create an instance of the Kraken API
-    kraken_api = KrakenWebsocketTradeAPI(product_id=product_id)
+    kraken_api = KrakenWebsocketTradeAPI(product_ids=product_ids)
 
     logger.info('Creating the producer...')
 
@@ -72,5 +72,5 @@ if __name__ == '__main__':
     produce_trades(
         kafka_broker_addres=config.kafka_broker_addres,
         kafka_topic_name=config.kafka_topic_name,
-        product_id=config.product_id,
+        product_ids=config.product_ids,
     )

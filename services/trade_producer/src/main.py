@@ -31,7 +31,7 @@ def produce_trades(
     topic = app.topic(name=kafka_topic_name, value_serializer='json')
 
     logger.info(f'Creating the Kraken API to fetch data for {product_ids}')
-    
+
     # Create an instance of the Kraken API
     kraken_api = KrakenWebsocketTradeAPI(product_ids=product_ids)
 
@@ -59,7 +59,6 @@ def produce_trades(
 
 
 if __name__ == '__main__':
-    
     # You can also pass configuration parameters using the command line
     # use argparse to parse the kafka_broker_address
     # and kafka_topic_name from the command line
@@ -69,8 +68,11 @@ if __name__ == '__main__':
     # parser.add_argument('--kafka_topic_name', type=str, required=True)
     # args = parser.parse_args()
 
-    produce_trades(
-        kafka_broker_addres=config.kafka_broker_addres,
-        kafka_topic_name=config.kafka_topic_name,
-        product_ids=config.product_ids,
-    )
+    try:
+        produce_trades(
+            kafka_broker_addres=config.kafka_broker_addres,
+            kafka_topic_name=config.kafka_topic_name,
+            product_ids=config.product_ids,
+        )
+    except KeyboardInterrupt:
+        logger.info('Exiting...')

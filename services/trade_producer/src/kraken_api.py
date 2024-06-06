@@ -46,7 +46,6 @@ class KrakenWebsocketTradeAPI:
             _ = self._ws.recv()
 
     def get_trades(self) -> List[Dict]:
-
         message = self._ws.recv()
 
         if 'heartbeat' in message:

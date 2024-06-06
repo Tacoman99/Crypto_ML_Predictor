@@ -1,4 +1,3 @@
-
 import os
 from typing import List
 
@@ -16,13 +15,19 @@ from pydantic_settings import BaseSettings
 
 
 class Config(BaseSettings):
-<<<<<<< HEAD
-    product_id: str = 'ETH/EUR'
-=======
-    product_ids: List[str] = ['ETH/USD', 'BTC/USD', 'ETH/EUR', 'BTC/EUR']
->>>>>>> a53b3a4 (Support for multiple product_ids in trade-producer)
+    product_ids: List[str] = [
+        'ETH/USD',
+        'BTC/USD',
+        'ETH/EUR',
+        'BTC/EUR',
+        # 'USDT/USD',
+        # 'BNB/USD',
+        # 'SOL/USD',
+        # 'USDC/USD',
+        # 'XRP/USD',
+    ]
     kafka_broker_addres: str = os.environ['KAFKA_BROKER_ADDRESS']
     kafka_topic_name: str = 'trade'
-    # ohlc_windows_seconds: int = os.environ['OHLC_WINDOWS_SECONDS']
+
 
 config = Config()

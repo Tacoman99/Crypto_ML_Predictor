@@ -18,6 +18,6 @@ COPY pyproject.toml poetry.lock /app/
 RUN poetry install
 
 # copy all the source code into the container
-COPY . /app
+COPY src/*.py /app/src/
 
 CMD ["poetry", "run", "python", "src/main.py"]

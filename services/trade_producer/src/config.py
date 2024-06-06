@@ -16,6 +16,6 @@ class Config(BaseSettings):
     product_id: str = 'ETH/EUR'
     kafka_broker_addres: str = os.environ['KAFKA_BROKER_ADDRESS']
     kafka_topic_name: str = 'trade'
-    ohlc_windows_seconds: int = os.environ['OHLC_WINDOWS_SECONDS']
+    # ohlc_windows_seconds: int = os.environ['OHLC_WINDOWS_SECONDS']
 
 config = Config()

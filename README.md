@@ -13,9 +13,9 @@
 - [x] Linting and formatting.
 
 #### Trade to ohlc (transformation)
-- [ ] Dockerize
-- [ ] Makefile with build, run, lint and format commands
-- [ ] Load config parameters from env variables instead of hard-coding them
+- [x] Dockerize
+- [x] Makefile with build, run, lint and format commands
+- [x] Load config parameters from env variables instead of hard-coding them
 
 ### Kafka to feature store (consumer)
 - [ ] Dockerize

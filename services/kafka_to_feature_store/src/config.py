@@ -8,13 +8,13 @@ load_dotenv(find_dotenv())
 
 class Config(BaseSettings):
     
-    # Challenge: add the other ones here
-    # kafka_broker_addres: str = os.environ['KAFKA_BROKER_ADDRESS']
-    # kafka_topic_name: str = 'trade'
-    # ohlc_windows_seconds: int = os.environ['OHLC_WINDOWS_SECONDS']
+    kafka_broker_address: str = 'localhost:19092'
+    kafka_topic: str
+    feature_group_name: str
+    feature_group_version: int
 
-    # I am just gonna do the real secret ones to work with Hopsworks
-    hopsworks_project_name: str = os.environ['HOPSWORKS_PROJECT_NAME']
-    hopsworks_api_key: str = os.environ['HOPSWORKS_API_KEY']
+    # required to authenticate with Hopsworks API
+    hopsworks_project_name: str
+    hopsworks_api_key: str
 
 config = Config()

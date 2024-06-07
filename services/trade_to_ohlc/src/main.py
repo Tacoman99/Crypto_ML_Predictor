@@ -7,6 +7,7 @@ from loguru import logger
 # your own local packages
 from src.config import config
 
+
 def trade_to_ohlc(
     kafka_input_topic: str,
     kafka_output_topic: str,
@@ -32,8 +33,8 @@ def trade_to_ohlc(
     # this handles all low level communication with kafka
     app = Application(
         broker_address=kafka_broker_address,
-        consumer_group="trade_to_ohlc",
-        auto_offset_reset="earliest", # process all messages from the input topic when this service starts
+        consumer_group='trade_to_ohlc',
+        auto_offset_reset='earliest',  # process all messages from the input topic when this service starts
         # auto_create_reset="latest", # forget about pass messages, process only the ones coming from this moment
     )
 
@@ -50,13 +51,13 @@ def trade_to_ohlc(
         Initialize the OHLC candle with the first trade
         """
         return {
-            "open": value["price"],
-            "high": value["price"],
-            "low": value["price"],
-            "close": value["price"],
-            "product_id": value["product_id"],
+            'open': value['price'],
+            'high': value['price'],
+            'low': value['price'],
+            'close': value['price'],
+            'product_id': value['product_id'],
         }
-    
+
     def update_ohlc_candle(ohlc_candle: dict, trade: dict) -> dict:
         """
         Update the OHLC candle with the new trade and return the updated candle
@@ -64,18 +65,18 @@ def trade_to_ohlc(
         Args:
             ohlc_candle : dict : The current OHLC candle
             trade : dict : The incoming trade
-        
+
         Returns:
             dict : The updated OHLC candle
         """
         return {
-            "open": ohlc_candle["open"],
-            "high": max(ohlc_candle["high"], trade["price"]),
-            "low": min(ohlc_candle["low"], trade["price"]),
-            "close": trade["price"],
-            "product_id": trade["product_id"],
+            'open': ohlc_candle['open'],
+            'high': max(ohlc_candle['high'], trade['price']),
+            'low': min(ohlc_candle['low'], trade['price']),
+            'close': trade['price'],
+            'product_id': trade['product_id'],
         }
-        
+
     # apply tranformations to the incoming data - start
     # Here we need to define how we transform the incoming trades into OHLC candles
     sdf = sdf.tumbling_window(duration_ms=timedelta(seconds=ohlc_window_seconds))
@@ -98,7 +99,7 @@ def trade_to_ohlc(
     #     'close': 3537.11,
     #     'product_id': 'ETH/USD',
     # }
-    
+
     # unpacking the values we want
     sdf['open'] = sdf['value']['open']
     sdf['high'] = sdf['value']['high']
@@ -111,18 +112,21 @@ def trade_to_ohlc(
 
     # let's keep only the keys we want in our final message
     sdf = sdf[['timestamp', 'open', 'high', 'low', 'close', 'product_id']]
-    
+
     # apply tranformations to the incoming data - end
 
+    # let's print the data to the logs
     sdf = sdf.update(logger.info)
 
+    # write the data to the output topic
     sdf = sdf.to_topic(output_topic)
 
-    # kick-off the streaming application
+    # We are done defining the streaming application. Now we need to run it.
+    # Let's kick-off the streaming application
     app.run(sdf)
 
-if __name__ == '__main__':
 
+if __name__ == '__main__':
     from src.config import config
 
     trade_to_ohlc(

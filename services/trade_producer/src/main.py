@@ -55,10 +55,11 @@ def produce_trades(
 
                 logger.info(trade)
 
-            sleep(1)
+            # sleep(1)
 
 
 if __name__ == '__main__':
+
     # You can also pass configuration parameters using the command line
     # use argparse to parse the kafka_broker_address
     # and kafka_topic_name from the command line
@@ -67,10 +68,12 @@ if __name__ == '__main__':
     # parser.add_argument('--kafka_broker_address', type=str, required=False, default='localhost:9092')
     # parser.add_argument('--kafka_topic_name', type=str, required=True)
     # args = parser.parse_args()
+    
+    # logger.debug(config.model_dump())
 
     try:
         produce_trades(
-            kafka_broker_addres=config.kafka_broker_addres,
+            kafka_broker_addres=config.kafka_broker_address,
             kafka_topic_name=config.kafka_topic_name,
             product_ids=config.product_ids,
         )

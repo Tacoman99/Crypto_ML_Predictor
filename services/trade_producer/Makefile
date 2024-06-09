@@ -1,3 +1,6 @@
+run-dev:
+	poetry run python src/main.py
+
 build:
 	docker build -t trade-producer .
 
@@ -8,7 +11,9 @@ run: build
 		trade-producer
 
 lint:
-	ruff check --fix
+	poetry run ruff check --fix
 
 format:
-	ruff format .
+	poetry run ruff format .
+
+lint-and-format: lint format

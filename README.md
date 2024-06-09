@@ -18,10 +18,13 @@
 - [x] Load config parameters from env variables instead of hard-coding them
 
 ### Kafka to feature store (consumer)
-- [ ] Dockerize
-- [ ] Makefile with build, run, lint and format commands
-- [ ] Load config parameters from env variables instead of hard-coding them
+- [x] Dockerize
+- [x] Makefile with build, run, lint and format commands
+- [x] Load config parameters from env variables instead of hard-coding them
 
 # Next steps
 - [ ] Write a docker compose to run the whole feature pipeline locally.
+    - [ ] Pay attention to the network.
 - [ ] Backfill the feature group using historical data.
+    - [ ] Adjust trade producer to connect to Kraken's REST API
+    - [ ] Adjust `kafka_to_feature_store` to save data to the offline feature group.

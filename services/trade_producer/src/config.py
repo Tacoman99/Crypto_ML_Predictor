@@ -22,6 +22,10 @@ class Config(BaseSettings):
         # 'USDC/USD',
         # 'XRP/USD',
     ]
+    # Challenge: validate that `live_or_historical` is either
+    # 'live' or 'historical' using pydantic settings.
+    live_or_historical: str = 'live'
+    last_n_days: int = 7
 
 
 config = Config()

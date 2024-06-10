@@ -1,5 +1,6 @@
 import hopsworks
 import pandas as pd
+from typing import List
 
 from src.config import config
 
@@ -7,7 +8,7 @@ from src.config import config
 def push_data_to_feature_store(
     feature_group_name: str,
     feature_group_version: int,
-    data: dict,
+    data: List[dict],
 ) -> None:
     """
     Pushes the given `data` to the feature store, writing it to the feature group
@@ -16,7 +17,7 @@ def push_data_to_feature_store(
     Args:
         feature_group_name (str): The name of the feature group to write to.
         feature_group_version (int): The version of the feature group to write to.
-        data (dict): The data to write to the feature store.
+        data (List[dict]): The data to write to the feature store.
 
     Returns:
         None
@@ -44,7 +45,7 @@ def push_data_to_feature_store(
     # breakpoint()
 
     # transform the data (dict) into a pandas dataframe
-    data = pd.DataFrame([data])
+    data = pd.DataFrame(data)
 
     # Write the data to the feature group
     ohlc_feature_group.insert(data, write_options={"start_offline_materialization": False})

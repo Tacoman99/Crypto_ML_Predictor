@@ -12,6 +12,7 @@ class Config(BaseSettings):
     kafka_topic: str
     feature_group_name: str
     feature_group_version: int
+    buffer_size: int = 1
 
     # required to authenticate with Hopsworks API
     hopsworks_project_name: str

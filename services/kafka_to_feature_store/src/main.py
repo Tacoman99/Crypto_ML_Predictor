@@ -9,6 +9,7 @@ def kafka_to_feature_store(
     kafka_broker_address: str,
     feature_group_name: str,
     feature_group_version: int,
+    buffer_size: int = 1,
 ) -> None:
     """
     Reads `ohlc` data from the Kafka topic and writes it to the feature store.
@@ -20,6 +21,7 @@ def kafka_to_feature_store(
         kafka_broker_address (str): The address of the Kafka broker.
         feature_group_name (str): The name of the feature group to write to.
         feature_group_version (int): The version of the feature group to write to.
+        buffer_size (int): The number of messages to read from Kafka before writing to the feature store.
 
     Returns:
         None
@@ -27,9 +29,16 @@ def kafka_to_feature_store(
     app = Application(
         broker_address=kafka_broker_address,
         consumer_group="kafka_to_feature_store",
+        # auto_offset_reset="earliest",
     )
 
     # input_topic = app.topic(name=kafka_topic, value_serializer='json')
+
+    # contains the list of trades to be written to the feature store at once
+    # TODO: handle the case where there the last batch is not full but no more data is
+    # coming. With the current implementation we can have up to (buffer_size - 1) messages
+    # in the buffer that will never be written to the feature store.
+    buffer = []
 
     # Create a consumer and start a polling loop
     with app.get_consumer() as consumer:
@@ -54,12 +63,30 @@ def kafka_to_feature_store(
                 # step 1 -> parse the message from kafka into a dictionary
                 ohlc = json.loads(msg.value().decode('utf-8'))
 
-                # step 2 -> write the data to the feature store
-                push_data_to_feature_store(
-                    feature_group_name=feature_group_name,
-                    feature_group_version=feature_group_version,
-                    data=ohlc,
-                )
+                # append the data to the buffer
+                buffer.append(ohlc)
+
+                # breakpoint()
+
+                # if the buffer is full, write the data to the feature store
+                if len(buffer) >= buffer_size:
+                    
+                    # step 2 -> write the data to the feature store
+                    push_data_to_feature_store(
+                        feature_group_name=feature_group_name,
+                        feature_group_version=feature_group_version,
+                        data=buffer,
+                    )
+
+                    # reset the buffer
+                    buffer = []
+
+                # # step 2 -> write the data to the feature store
+                # push_data_to_feature_store(
+                #     feature_group_name=feature_group_name,
+                #     feature_group_version=feature_group_version,
+                #     data=ohlc,
+                # )
 
                 # breakpoint()
 
@@ -73,11 +100,15 @@ def kafka_to_feature_store(
 if __name__ == '__main__':
 
     from src.config import config
-    # logger.debug(config.model_dump())
+    logger.debug(config.model_dump())
 
-    kafka_to_feature_store(
-        kafka_topic=config.kafka_topic,
-        kafka_broker_address=config.kafka_broker_address,
-        feature_group_name=config.feature_group_name,
-        feature_group_version=config.feature_group_version,
-    )
+    try:
+        kafka_to_feature_store(
+            kafka_topic=config.kafka_topic,
+            kafka_broker_address=config.kafka_broker_address,
+            feature_group_name=config.feature_group_name,
+            feature_group_version=config.feature_group_version,
+            buffer_size=config.buffer_size,
+        )
+    except KeyboardInterrupt:
+        logger.info('Exiting neatly!')

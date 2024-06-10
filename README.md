@@ -23,8 +23,10 @@
 - [x] Load config parameters from env variables instead of hard-coding them
 
 # Next steps
-- [ ] Write a docker compose to run the whole feature pipeline locally.
-    - [ ] Pay attention to the network.
+- [x] Write a docker compose to run the whole feature pipeline locally.
+    - [x] Pay attention to the network.
 - [ ] Backfill the feature group using historical data.
-    - [ ] Adjust trade producer to connect to Kraken's REST API
+    - [x] Adjust trade producer to connect to Kraken's REST API
     - [ ] Adjust `kafka_to_feature_store` to save data to the offline feature group.
+        - [ ] Make sure we write the data to the offline feature group. The code as it is now
+        saves a batch of features (not just one, which is great) but to the online store.

@@ -1,9 +1,12 @@
 from typing import List, Dict
+import json
+
+from loguru import logger
 
 
 class KrakenRestAPI:
 
-    URL = "https://api.kraken.com/0/public/Trades?pair={product_id}&since={since_ms}"
+    URL = "https://api.kraken.com/0/public/Trades?pair={product_id}&since={since_sec}"
 
     def __init__(
         self,
@@ -26,6 +29,10 @@ class KrakenRestAPI:
         self.from_ms = from_ms
         self.to_ms = to_ms
 
+        # are we done fetching historical data?
+        # Yes, if the last batch of trades has a data['result'][product_id]['last'] >= self.to_ms
+        self._is_done = False
+
     def get_trades(self) -> List[Dict]:
         """
         Fetches a batch of trades from the Kraken Rest API and returns them as a list
@@ -45,17 +52,54 @@ class KrakenRestAPI:
         # replacing the placeholders in the URL with the actual values for
         # - product_id
         # - since_ms
-        url = self.URL.format(product_id=self.product_ids[0], since_ms=self.from_ms)
+        since_sec = self.from_ms // 1000
+        url = self.URL.format(product_id=self.product_ids[0], since_sec=since_sec)
 
         response = requests.request("GET", url, headers=headers, data=payload)
 
-        print(response.text)
-
         # parse string into dictionary
-        import json
         data = json.loads(response.text)
+
+        # TODO: check if there is an error in the response, right now we don't do any
+        # error handling
+        # if data['error'] is not []:
+        #     # if there is an error, raise an exception
+        #     raise Exception(data['error'])
+
+        # trades = []
+        # for trade in data['result'][self.product_ids[0]]:
+        #     trades.append({
+        #         'price': float(trade[0]),
+        #         'volume': float(trade[1]),
+        #         'time': int(trade[2]),
+        #     })
+
+        # little trick. Instead of initializing an empty list and appending to it, you
+        # can use a list comprehension to do the same thing
+        trades = [
+            {
+                'price': float(trade[0]),
+                'volume': float(trade[1]),
+                'time': int(trade[2]),
+                'product_id': self.product_ids[0],
+            } for trade in data['result'][self.product_ids[0]]
+        ]
         
-        breakpoint()
+        # check if we are done fetching historical data
+        last_ts_in_ns = int(data['result']['last'])
+        # convert nanoseconds to milliseconds
+        last_ts = last_ts_in_ns // 1_000_000
+        if last_ts >= self.to_ms:
+            # yes, we are done
+            self._is_done = True
+        
+        logger.debug(f'Fetched {len(trades)} trades')
+        # log the last trade timestamp
+        logger.debug(f'Last trade timestamp: {last_ts}')
+
+        # breakpoint()
+
+        return trades
 
     def is_done(self) -> bool:
-        return False
+        return self._is_done

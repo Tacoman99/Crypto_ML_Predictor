@@ -25,7 +25,7 @@ class Config(BaseSettings):
     # Challenge: validate that `live_or_historical` is either
     # 'live' or 'historical' using pydantic settings.
     live_or_historical: str = 'live'
-    last_n_days: int = 7
+    last_n_days: int = 1
 
 
 config = Config()

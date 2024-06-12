@@ -50,19 +50,9 @@ def produce_trades(
         # I need historical data, so
         from src.kraken_api.rest import KrakenRestAPI
 
-        # get today's date at midnight
-        from datetime import datetime
-
-        today_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-        # today_date to milliseconds
-        to_ms = int(today_date.timestamp() * 1000)
-        # from_ms is last_n_days ago from today, so
-        from_ms = to_ms - last_n_days * 24 * 60 * 60 * 1000
-
-        # breakpoint()
-
         kraken_api = KrakenRestAPI(
-            product_ids=product_ids, from_ms=from_ms, to_ms=to_ms
+            product_ids=product_ids,
+            last_n_days=last_n_days,
         )
 
     logger.info('Creating the producer...')

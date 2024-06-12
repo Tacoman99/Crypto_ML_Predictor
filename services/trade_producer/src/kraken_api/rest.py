@@ -5,15 +5,9 @@ from loguru import logger
 
 
 class KrakenRestAPI:
+    URL = 'https://api.kraken.com/0/public/Trades?pair={product_id}&since={since_sec}'
 
-    URL = "https://api.kraken.com/0/public/Trades?pair={product_id}&since={since_sec}"
-
-    def __init__(
-        self,
-        product_ids: List[str],
-        from_ms: int,
-        to_ms :int
-    ) -> None:
+    def __init__(self, product_ids: List[str], from_ms: int, to_ms: int) -> None:
         """
         Basic initialization of the Kraken Rest API.
 
@@ -28,6 +22,15 @@ class KrakenRestAPI:
         self.product_ids = product_ids
         self.from_ms = from_ms
         self.to_ms = to_ms
+
+        logger.debug(f'Initializing KrakenRestAPI: from_ms={from_ms}, to_ms={to_ms}')
+
+        # breakpoint()
+
+        # the timestamp from which we want to fetch historical data
+        # this will be updated after each batch of trades is fetched from the API
+        # self.since_ms = from_ms
+        self.last_trade_ms = from_ms
 
         # are we done fetching historical data?
         # Yes, if the last batch of trades has a data['result'][product_id]['last'] >= self.to_ms
@@ -52,10 +55,10 @@ class KrakenRestAPI:
         # replacing the placeholders in the URL with the actual values for
         # - product_id
         # - since_ms
-        since_sec = self.from_ms // 1000
+        since_sec = self.last_trade_ms // 1000
         url = self.URL.format(product_id=self.product_ids[0], since_sec=since_sec)
 
-        response = requests.request("GET", url, headers=headers, data=payload)
+        response = requests.request('GET', url, headers=headers, data=payload)
 
         # parse string into dictionary
         data = json.loads(response.text)
@@ -82,20 +85,23 @@ class KrakenRestAPI:
                 'volume': float(trade[1]),
                 'time': int(trade[2]),
                 'product_id': self.product_ids[0],
-            } for trade in data['result'][self.product_ids[0]]
+            }
+            for trade in data['result'][self.product_ids[0]]
         ]
-        
+
+        # filter out trades that are after the end timestamp
+        trades = [trade for trade in trades if trade['time'] <= self.to_ms // 1000]
+
         # check if we are done fetching historical data
         last_ts_in_ns = int(data['result']['last'])
-        # convert nanoseconds to milliseconds
-        last_ts = last_ts_in_ns // 1_000_000
-        if last_ts >= self.to_ms:
-            # yes, we are done
-            self._is_done = True
-        
+        self.last_trade_ms = last_ts_in_ns // 1_000_000
+        self._is_done = self.last_trade_ms >= self.to_ms
+
+        # breakpoint()
+
         logger.debug(f'Fetched {len(trades)} trades')
         # log the last trade timestamp
-        logger.debug(f'Last trade timestamp: {last_ts}')
+        logger.debug(f'Last trade timestamp: {self.last_trade_ms}')
 
         # breakpoint()
 
@@ -103,3 +109,4 @@ class KrakenRestAPI:
 
     def is_done(self) -> bool:
         return self._is_done
+        # return self.since_ms >= self.to_ms

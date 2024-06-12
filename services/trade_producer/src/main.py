@@ -31,7 +31,10 @@ def produce_trades(
     """
     # Let's keep it simple for now, but please do this validation in the
     # config.py file using pydantic settings
-    assert live_or_historical in {"live", "historical"}, f"Invalid value for live_or_historical: {live_or_historical}"
+    assert live_or_historical in {
+        'live',
+        'historical',
+    }, f'Invalid value for live_or_historical: {live_or_historical}'
 
     app = Application(broker_address=kafka_broker_addres)
 
@@ -47,26 +50,31 @@ def produce_trades(
         # I need historical data, so
         from src.kraken_api.rest import KrakenRestAPI
 
-        # get current timestamp in milliseconds
-        import time
-        to_ms = int(time.time() * 1000)
+        # get today's date at midnight
+        from datetime import datetime
+
+        today_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        # today_date to milliseconds
+        to_ms = int(today_date.timestamp() * 1000)
+        # from_ms is last_n_days ago from today, so
         from_ms = to_ms - last_n_days * 24 * 60 * 60 * 1000
 
-        kraken_api = KrakenRestAPI(product_ids=product_ids,
-                                   from_ms=from_ms,
-                                   to_ms=to_ms)
-        
+        # breakpoint()
+
+        kraken_api = KrakenRestAPI(
+            product_ids=product_ids, from_ms=from_ms, to_ms=to_ms
+        )
+
     logger.info('Creating the producer...')
 
     # Create a Producer instance
     with app.get_producer() as producer:
         while True:
-
             # check if we are done fetching historical data
             if kraken_api.is_done():
                 logger.info('Done fetching historical data')
                 break
-            
+
             # Get the trades from the Kraken API
             trades: List[Dict] = kraken_api.get_trades()
 
@@ -86,7 +94,6 @@ def produce_trades(
 
 
 if __name__ == '__main__':
-
     # You can also pass configuration parameters using the command line
     # use argparse to parse the kafka_broker_address
     # and kafka_topic_name from the command line
@@ -95,7 +102,7 @@ if __name__ == '__main__':
     # parser.add_argument('--kafka_broker_address', type=str, required=False, default='localhost:9092')
     # parser.add_argument('--kafka_topic_name', type=str, required=True)
     # args = parser.parse_args()
-    
+
     # logger.debug(config.model_dump())
 
     try:
@@ -103,7 +110,6 @@ if __name__ == '__main__':
             kafka_broker_addres=config.kafka_broker_address,
             kafka_topic_name=config.kafka_topic_name,
             product_ids=config.product_ids,
-
             # extra parameters I need when running the trade_producer against
             # historical data from the KrakenREST API
             live_or_historical=config.live_or_historical,

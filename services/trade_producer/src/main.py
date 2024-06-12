@@ -48,9 +48,9 @@ def produce_trades(
         kraken_api = KrakenWebsocketTradeAPI(product_ids=product_ids)
     else:
         # I need historical data, so
-        from src.kraken_api.rest import KrakenRestAPI
+        from src.kraken_api.rest import KrakenRestAPIMultipleProducts
 
-        kraken_api = KrakenRestAPI(
+        kraken_api = KrakenRestAPIMultipleProducts(
             product_ids=product_ids,
             last_n_days=last_n_days,
         )

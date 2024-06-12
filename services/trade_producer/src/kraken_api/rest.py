@@ -4,6 +4,55 @@ import json
 from loguru import logger
 
 
+class KrakenRestAPIMultipleProducts:
+    def __init__(
+        self,
+        product_ids: List[str],
+        last_n_days: int,
+    ) -> None:
+        self.product_ids = product_ids
+
+        self.kraken_apis = [
+            KrakenRestAPI(product_ids=[product_id], last_n_days=last_n_days)
+            for product_id in product_ids
+        ]
+
+    def get_trades(self) -> List[Dict]:
+        """
+        Gets trade data from each kraken_api in self.kraken_apis and retuns a list
+        with all trades from all kraken_apis.
+
+        Args:
+            None
+
+        Returns:
+            List[Dict]: A list of dictionaries, where each dictionary contains the trade
+            data, for all product_ids in self.product_ids
+        """
+        trades: List[Dict] = []
+
+        for kraken_api in self.kraken_apis:
+
+            if kraken_api.is_done():
+                # if we are done fetching historical data for this product_id, skip it
+                continue
+            else:
+                trades += kraken_api.get_trades()
+
+        return trades
+
+    def is_done(self) -> bool:
+        """
+        Returns True if all kraken_apis in self.kraken_apis are done fetching historical.
+        It returns False otherwise.
+        """
+        for kraken_api in self.kraken_apis:
+            if not kraken_api.is_done():
+                return False
+            
+        return True
+
+
 class KrakenRestAPI:
     URL = 'https://api.kraken.com/0/public/Trades?pair={product_id}&since={since_sec}'
 
@@ -12,7 +61,7 @@ class KrakenRestAPI:
         product_ids: List[str],
         # from_ms: int,
         # to_ms: int
-        last_n_days: int
+        last_n_days: int,
     ) -> None:
         """
         Basic initialization of the Kraken Rest API.
@@ -27,7 +76,9 @@ class KrakenRestAPI:
         self.product_ids = product_ids
         self.from_ms, self.to_ms = self._init_from_to_ms(last_n_days)
 
-        logger.debug(f'Initializing KrakenRestAPI: from_ms={self.from_ms}, to_ms={self.to_ms}')
+        logger.debug(
+            f'Initializing KrakenRestAPI: from_ms={self.from_ms}, to_ms={self.to_ms}'
+        )
 
         # breakpoint()
 
@@ -54,9 +105,11 @@ class KrakenRestAPI:
         """
         # get the current date at midnight using UTC
         from datetime import datetime, timezone
+
         today_date = datetime.now(timezone.utc).replace(
-            hour=0, minute=0, second=0, microsecond=0)
-        
+            hour=0, minute=0, second=0, microsecond=0
+        )
+
         # today_date to milliseconds
         to_ms = int(today_date.timestamp() * 1000)
 
@@ -64,7 +117,7 @@ class KrakenRestAPI:
         from_ms = to_ms - last_n_days * 24 * 60 * 60 * 1000
 
         return from_ms, to_ms
-    
+
     def get_trades(self) -> List[Dict]:
         """
         Fetches a batch of trades from the Kraken Rest API and returns them as a list

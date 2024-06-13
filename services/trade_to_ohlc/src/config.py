@@ -26,6 +26,8 @@ class Config(BaseSettings):
     kafka_output_topic: str = (
         'ohlc'  # default value, if there is no env variable with the same name
     )
+    kafka_consumer_group: str = 'trade_to_ohlc'
+
     ohlc_window_seconds: int
 
 

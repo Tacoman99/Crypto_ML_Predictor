@@ -3,7 +3,7 @@ run-dev:
 
 run-dev-historical:
 	LIVE_OR_HISTORICAL=historical \
-	LAST_N_DAYS=7 \
+	LAST_N_DAYS=2 \
 	poetry run python src/main.py
 
 build:

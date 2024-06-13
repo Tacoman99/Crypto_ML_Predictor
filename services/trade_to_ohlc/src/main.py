@@ -12,6 +12,7 @@ def trade_to_ohlc(
     kafka_input_topic: str,
     kafka_output_topic: str,
     kafka_broker_address: str,
+    kafka_consumer_group: str,
     ohlc_window_seconds: int,
 ) -> None:
     """
@@ -23,6 +24,7 @@ def trade_to_ohlc(
         kafka_input_topic : str : Kafka topic to read trade data from
         kafka_output_topic : str : Kafka topic to write ohlc data to
         kafka_broker_address : str : Kafka broker address
+        kafka_consumer_group : str : Kafka consumer group
         ohlc_window_seconds : int : Window size in seconds for OHLC aggregation
 
     Returns:
@@ -33,7 +35,7 @@ def trade_to_ohlc(
     # this handles all low level communication with kafka
     app = Application(
         broker_address=kafka_broker_address,
-        consumer_group='trade_to_ohlc',
+        consumer_group=kafka_consumer_group,
         auto_offset_reset='earliest',  # process all messages from the input topic when this service starts
         # auto_create_reset="latest", # forget about pass messages, process only the ones coming from this moment
     )
@@ -133,5 +135,6 @@ if __name__ == '__main__':
         kafka_input_topic=config.kafka_input_topic,
         kafka_output_topic=config.kafka_output_topic,
         kafka_broker_address=config.kafka_broker_address,
+        kafka_consumer_group=config.kafka_consumer_group,
         ohlc_window_seconds=config.ohlc_window_seconds,
     )

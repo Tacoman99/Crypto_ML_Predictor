@@ -73,10 +73,21 @@ def produce_trades(
 
             for trade in trades:
                 # Serialize an event using the defined Topic
-                message = topic.serialize(key=trade['product_id'], value=trade)
+                message = topic.serialize(
+                    key=trade['product_id'],
+                    value=trade,
+                    timestamp_ms=trade['time'] * 1000, # convert to milliseconds    
+                )
+
+                # breakpoint()
 
                 # Produce a message into the Kafka topic
-                producer.produce(topic=topic.name, value=message.value, key=message.key)
+                producer.produce(
+                    topic=topic.name,
+                    value=message.value,
+                    key=message.key,
+                    timestamp=message.timestamp,    
+                )
 
                 logger.info(trade)
 

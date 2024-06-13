@@ -14,7 +14,7 @@ class KrakenRestAPIMultipleProducts:
         self.product_ids = product_ids
 
         self.kraken_apis = [
-            KrakenRestAPI(product_ids=[product_id], last_n_days=last_n_days)
+            KrakenRestAPI(product_id=product_id, last_n_days=last_n_days)
             for product_id in product_ids
         ]
 
@@ -59,7 +59,7 @@ class KrakenRestAPI:
 
     def __init__(
         self,
-        product_ids: List[str],
+        product_id: str,
         # from_ms: int,
         # to_ms: int
         last_n_days: int,
@@ -68,13 +68,13 @@ class KrakenRestAPI:
         Basic initialization of the Kraken Rest API.
 
         Args:
-            product_ids (List[str]): A list of product IDs for which we want to get the trades.
+            product_id (str): One product ID for which we want to get the trades.
             last_n_days (int): The number of days from which we want to get historical data.
 
         Returns:
             None
         """
-        self.product_ids = product_ids
+        self.product_id = product_id
         self.from_ms, self.to_ms = self._init_from_to_ms(last_n_days)
 
         logger.debug(
@@ -139,7 +139,7 @@ class KrakenRestAPI:
         # - product_id
         # - since_ms
         since_sec = self.last_trade_ms // 1000
-        url = self.URL.format(product_id=self.product_ids[0], since_sec=since_sec)
+        url = self.URL.format(product_id=self.product_id, since_sec=since_sec)
 
         response = requests.request('GET', url, headers=headers, data=payload)
 
@@ -184,9 +184,9 @@ class KrakenRestAPI:
                 'price': float(trade[0]),
                 'volume': float(trade[1]),
                 'time': int(trade[2]),
-                'product_id': self.product_ids[0],
+                'product_id': self.product_id,
             }
-            for trade in data['result'][self.product_ids[0]]
+            for trade in data['result'][self.product_id]
         ]
         # except KeyError:
         #     breakpoint()
@@ -209,7 +209,7 @@ class KrakenRestAPI:
 
         # slow down the rate at which we are making requests to the Kraken API
         sleep(1)
-        
+
         return trades
 
     def is_done(self) -> bool:

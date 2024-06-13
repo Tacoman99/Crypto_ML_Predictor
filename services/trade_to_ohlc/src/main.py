@@ -82,7 +82,7 @@ def trade_to_ohlc(
     # apply tranformations to the incoming data - start
     # Here we need to define how we transform the incoming trades into OHLC candles
     sdf = sdf.tumbling_window(duration_ms=timedelta(seconds=ohlc_window_seconds))
-    sdf = sdf.reduce(reducer=update_ohlc_candle, initializer=init_ohlc_candle).current()
+    sdf = sdf.reduce(reducer=update_ohlc_candle, initializer=init_ohlc_candle).final()
 
     # extract the open, high, low, close prices from the value key
     # The current format is the following:

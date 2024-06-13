@@ -14,6 +14,9 @@ class Config(BaseSettings):
     feature_group_version: int
     buffer_size: int = 1
 
+    # by default we want our `kafka_to_feature_store` service to run in live mode
+    live_or_historical: str = 'live'
+
     # required to authenticate with Hopsworks API
     hopsworks_project_name: str
     hopsworks_api_key: str

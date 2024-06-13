@@ -1,5 +1,6 @@
 from typing import List, Dict, Tuple
 import json
+from time import sleep
 
 from loguru import logger
 
@@ -145,11 +146,27 @@ class KrakenRestAPI:
         # parse string into dictionary
         data = json.loads(response.text)
 
+        # TODO/CHALLENGE
+        # It can happen that we get an error response from KrakenRESTAP like the following:
+        # data = {'error': ['EGeneral:Too many requests']}
+        # To solve this have several options
+        #
+        # Option 1. Check if the `error` key is present in the `data` and has
+        # a non-empty list value. If so, we could raise an exception, or even better, implment
+        # a retry mechanism, using a library like `retry` https://github.com/invl/retry
+        #
+        # Option 2. Simply slow down the rate at which we are making requests to the Kraken API,
+        # and cross your fingers.
+        #
+        # Option 3. Implement both Option 1 and Option 2, so you don't need to cross your fingers.
+
+
         # TODO: check if there is an error in the response, right now we don't do any
         # error handling
-        # if data['error'] is not []:
-        #     # if there is an error, raise an exception
-        #     raise Exception(data['error'])
+        if ('error' in data) and ('EGeneral:Too many requests' in data['error']):
+            # slow down the rate at which we are making requests to the Kraken API
+            logger.info('Too many requests. Sleeping for 30 seconds')
+            sleep(30)
 
         # trades = []
         # for trade in data['result'][self.product_ids[0]]:
@@ -161,6 +178,7 @@ class KrakenRestAPI:
 
         # little trick. Instead of initializing an empty list and appending to it, you
         # can use a list comprehension to do the same thing
+        # try:
         trades = [
             {
                 'price': float(trade[0]),
@@ -170,6 +188,8 @@ class KrakenRestAPI:
             }
             for trade in data['result'][self.product_ids[0]]
         ]
+        # except KeyError:
+        #     breakpoint()
 
         # filter out trades that are after the end timestamp
         trades = [trade for trade in trades if trade['time'] <= self.to_ms // 1000]
@@ -187,6 +207,9 @@ class KrakenRestAPI:
 
         # breakpoint()
 
+        # slow down the rate at which we are making requests to the Kraken API
+        sleep(1)
+        
         return trades
 
     def is_done(self) -> bool:

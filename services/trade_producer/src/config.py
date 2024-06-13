@@ -13,9 +13,9 @@ class Config(BaseSettings):
     kafka_topic_name: str = 'trade'
     product_ids: List[str] = [
         'ETH/USD',
-        'BTC/USD',
-        'ETH/EUR',
-        'BTC/EUR',
+        # 'BTC/USD',
+        # 'ETH/EUR',
+        # 'BTC/EUR',
         # 'USDT/USD',
         # 'BNB/USD',
         # 'SOL/USD',

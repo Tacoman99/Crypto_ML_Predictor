@@ -1,17 +1,17 @@
-from time import sleep
-from typing import Dict, List
+from typing import List
 
 from loguru import logger
 from quixstreams import Application
 
 # from src import config
 from src.config import config
+from src.kraken_api.trade import Trade
 from src.kraken_api.websocket import KrakenWebsocketTradeAPI
 
 
 def produce_trades(
     kafka_broker_addres: str,
-    kafka_topic_name: str,
+    kafka_topic: str,
     product_ids: List[str],
     live_or_historical: str,
     last_n_days: int,
@@ -21,7 +21,7 @@ def produce_trades(
 
     Args:
         kafka_broker_addres (str): The address of the Kafka broker.
-        kafka_topic_name (str): The name of the Kafka topic.
+        kafka_topic (str): The name of the Kafka topic.
         product_ids (List[str]): The product IDs for which we want to get the trades.
         live_or_historical (str): Whether we want to get live or historical data.
         last_n_days (int): The number of days from which we want to get historical data.
@@ -29,17 +29,16 @@ def produce_trades(
     Returns:
         None
     """
-    # Let's keep it simple for now, but please do this validation in the
-    # config.py file using pydantic settings
-    assert live_or_historical in {
-        'live',
-        'historical',
-    }, f'Invalid value for live_or_historical: {live_or_historical}'
+    # This validation is done inside the config.py file so we don't need it here.
+    # assert live_or_historical in {
+    #     'live',
+    #     'historical',
+    # }, f'Invalid value for live_or_historical: {live_or_historical}'
 
     app = Application(broker_address=kafka_broker_addres)
 
     # the topic where we will save the trades
-    topic = app.topic(name=kafka_topic_name, value_serializer='json')
+    topic = app.topic(name=kafka_topic, value_serializer='json')
 
     logger.info(f'Creating the Kraken API to fetch data for {product_ids}')
 
@@ -66,7 +65,7 @@ def produce_trades(
                 break
 
             # Get the trades from the Kraken API
-            trades: List[Dict] = kraken_api.get_trades()
+            trades: List[Trade] = kraken_api.get_trades()
 
             # Challenge 1: Send a heartbeat to Prometheus to check the service is alive
             # Challenge 2: Send an event with trade latency to Prometheus, to monitor the trade latency
@@ -74,9 +73,11 @@ def produce_trades(
             for trade in trades:
                 # Serialize an event using the defined Topic
                 message = topic.serialize(
-                    key=trade['product_id'],
-                    value=trade,
-                    timestamp_ms=trade['time'] * 1000, # convert to milliseconds    
+                    # key=trade['product_id'],
+                    # value=trade,
+                    # timestamp_ms=trade['time'] * 1000, # convert to milliseconds
+                    key=trade.product_id,
+                    value=trade.model_dump(),
                 )
 
                 # breakpoint()
@@ -86,7 +87,7 @@ def produce_trades(
                     topic=topic.name,
                     value=message.value,
                     key=message.key,
-                    timestamp=message.timestamp,    
+                    # timestamp=message.timestamp,
                 )
 
                 logger.info(trade)
@@ -97,19 +98,22 @@ def produce_trades(
 if __name__ == '__main__':
     # You can also pass configuration parameters using the command line
     # use argparse to parse the kafka_broker_address
-    # and kafka_topic_name from the command line
+    # and kafka_topic from the command line
     # from argparse import ArgumentParser
     # parser = ArgumentParser()
     # parser.add_argument('--kafka_broker_address', type=str, required=False, default='localhost:9092')
-    # parser.add_argument('--kafka_topic_name', type=str, required=True)
+    # parser.add_argument('--kafka_topic', type=str, required=True)
     # args = parser.parse_args()
 
     # logger.debug(config.model_dump())
 
+    # import os
+    # breakpoint()
+
     try:
         produce_trades(
             kafka_broker_addres=config.kafka_broker_address,
-            kafka_topic_name=config.kafka_topic_name,
+            kafka_topic=config.kafka_topic,
             product_ids=config.product_ids,
             # extra parameters I need when running the trade_producer against
             # historical data from the KrakenREST API

@@ -1,8 +1,10 @@
 import json
-from typing import Dict, List
+from typing import List
 
 from loguru import logger
 from websocket import create_connection
+
+from src.kraken_api.trade import Trade
 
 
 class KrakenWebsocketTradeAPI:
@@ -45,7 +47,11 @@ class KrakenWebsocketTradeAPI:
             _ = self._ws.recv()
             _ = self._ws.recv()
 
-    def get_trades(self) -> List[Dict]:
+    def get_trades(self) -> List[Trade]:
+        """
+        Fetches trade data from the Kraken Websocket API and returns a list
+        of Trades.
+        """
         message = self._ws.recv()
 
         if 'heartbeat' in message:
@@ -58,19 +64,44 @@ class KrakenWebsocketTradeAPI:
         # extract trades from the message['data'] field
         trades = []
         for trade in message['data']:
-            trades.append(
-                {
-                    'product_id': trade['symbol'],
-                    'price': trade['price'],
-                    'volume': trade['qty'],
-                    'timestamp': trade['timestamp'],
-                }
-            )
+            # transform the timestamp from Kraken which is a string
+            # like '2024-06-17T09:45:38.494012Z' into Unix
+            # milliseconds
+            timestamp_ms = self.to_ms(trade['timestamp'])
 
-        # breakpoint()
+            trades.append(
+                Trade(
+                    product_id=trade['symbol'],
+                    price=trade['price'],
+                    volume=trade['qty'],
+                    timestamp_ms=timestamp_ms,
+                )
+            )
 
         return trades
 
     def is_done(self) -> bool:
         """The websocket never stops, so we never stop fetching trades."""
         return False
+
+    @staticmethod
+    def to_ms(timestamp: str) -> int:
+        """
+        A function that transforms a timestamps expressed
+        as a string like this '2024-06-17T09:36:39.467866Z'
+        into a timestamp expressed in milliseconds.
+
+        Args:
+            timestamp (str): A timestamp expressed as a string.
+
+        Returns:
+            int: A timestamp expressed in milliseconds.
+        """
+        # parse a string like this '2024-06-17T09:36:39.467866Z'
+        # into a datetime object assuming UTC timezone
+        # and then transform this datetime object into Unix timestamp
+        # expressed in milliseconds
+        from datetime import datetime, timezone
+
+        timestamp = datetime.fromisoformat(timestamp[:-1]).replace(tzinfo=timezone.utc)
+        return int(timestamp.timestamp() * 1000)

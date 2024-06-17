@@ -1,8 +1,10 @@
-from typing import List, Dict, Tuple
 import json
 from time import sleep
+from typing import Dict, List, Tuple
 
 from loguru import logger
+
+from src.kraken_api.trade import Trade
 
 
 class KrakenRestAPIMultipleProducts:
@@ -33,7 +35,6 @@ class KrakenRestAPIMultipleProducts:
         trades: List[Dict] = []
 
         for kraken_api in self.kraken_apis:
-
             if kraken_api.is_done():
                 # if we are done fetching historical data for this product_id, skip it
                 continue
@@ -50,7 +51,7 @@ class KrakenRestAPIMultipleProducts:
         for kraken_api in self.kraken_apis:
             if not kraken_api.is_done():
                 return False
-            
+
         return True
 
 
@@ -119,7 +120,7 @@ class KrakenRestAPI:
 
         return from_ms, to_ms
 
-    def get_trades(self) -> List[Dict]:
+    def get_trades(self) -> List[Trade]:
         """
         Fetches a batch of trades from the Kraken Rest API and returns them as a list
         of dictionaries.
@@ -128,7 +129,7 @@ class KrakenRestAPI:
             None
 
         Returns:
-            List[Dict]: A list of dictionaries, where each dictionary contains the trade data.
+            List[Trade]: A list of dictionaries, where each dictionary contains the trade data.
         """
         import requests
 
@@ -160,7 +161,6 @@ class KrakenRestAPI:
         #
         # Option 3. Implement both Option 1 and Option 2, so you don't need to cross your fingers.
 
-
         # TODO: check if there is an error in the response, right now we don't do any
         # error handling
         if ('error' in data) and ('EGeneral:Too many requests' in data['error']):
@@ -179,20 +179,23 @@ class KrakenRestAPI:
         # little trick. Instead of initializing an empty list and appending to it, you
         # can use a list comprehension to do the same thing
         # try:
+        if 'result' not in data:
+            breakpoint()
+
         trades = [
-            {
-                'price': float(trade[0]),
-                'volume': float(trade[1]),
-                'time': int(trade[2]),
-                'product_id': self.product_id,
-            }
+            Trade(
+                price=float(trade[0]),
+                volume=float(trade[1]),
+                timestamp_ms=int(trade[2]) * 1000,
+                product_id=self.product_id,
+            )
             for trade in data['result'][self.product_id]
         ]
         # except KeyError:
         #     breakpoint()
 
         # filter out trades that are after the end timestamp
-        trades = [trade for trade in trades if trade['time'] <= self.to_ms // 1000]
+        trades = [trade for trade in trades if trade.timestamp_ms <= self.to_ms]
 
         # check if we are done fetching historical data
         last_ts_in_ns = int(data['result']['last'])

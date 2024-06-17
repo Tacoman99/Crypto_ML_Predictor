@@ -19,8 +19,8 @@ services:
       - redpanda_network
     environment:
       KAFKA_BROKER_ADDRESS: redpanda-0:9092
-      LIVE_OR_HISTORICAL: historical
-      LAST_N_DAYS: 7
+    env_file:
+      - ../services/trade_producer/historical.env
       
   trade_to_ohlc:
     # container_name: trade_to_ohlc
@@ -30,7 +30,8 @@ services:
       - redpanda_network
     environment:
       KAFKA_BROKER_ADDRESS: redpanda-0:9092
-      OHLC_WINDOW_SECONDS: 60
+    env_file:
+      - ../services/trade_to_ohlc/historical.env
 
   kafka_to_feature_store:
     # container_name: kafka_to_feature_store
@@ -40,9 +41,6 @@ services:
       - redpanda_network
     environment:
       KAFKA_BROKER_ADDRESS: redpanda-0:9092
-      LIVE_OR_HISTORICAL: historical
-      BUFFER_SIZE: 1440 # this corresponds to saving data for 1 day if you have only one product.
-
-    # pass environment variables from my .env file
     env_file:
-      - ../services/kafka_to_feature_store/.env
+      - ../services/kafka_to_feature_store/historical.env
+      - ../services/kafka_to_feature_store/.credentials.env

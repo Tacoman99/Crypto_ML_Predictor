@@ -19,7 +19,8 @@ services:
       - redpanda_network
     environment:
       KAFKA_BROKER_ADDRESS: redpanda-0:9092
-      LIVE_OR_HISTORICAL: historical
+    env_file:
+      - ../services/trade_producer/live.env
       
   trade_to_ohlc:
     # container_name: trade_to_ohlc
@@ -29,16 +30,17 @@ services:
       - redpanda_network
     environment:
       KAFKA_BROKER_ADDRESS: redpanda-0:9092
-      OHLC_WINDOW_SECONDS: 60
+    env_file:
+      - ../services/trade_to_ohlc/live.env
 
-  # kafka_to_feature_store:
-  #   container_name: kafka_to_feature_store
-  #   build:
-  #     context: ../services/kafka_to_feature_store
-  #   networks:
-  #     - redpanda_network
-  #   environment:
-  #     KAFKA_BROKER_ADDRESS: redpanda-0:9092
-  #   # pass environment variables from my .env file
-  #   env_file:
-  #     - ../services/kafka_to_feature_store/.env
+  kafka_to_feature_store:
+    container_name: kafka_to_feature_store
+    build:
+      context: ../services/kafka_to_feature_store
+    networks:
+      - redpanda_network
+    environment:
+      KAFKA_BROKER_ADDRESS: redpanda-0:9092
+    env_file:
+      - ../services/kafka_to_feature_store/live.env
+      - ../services/kafka_to_feature_store/.credentials.env

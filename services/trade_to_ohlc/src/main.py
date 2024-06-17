@@ -1,5 +1,6 @@
 # standard library packages
 from datetime import timedelta
+from typing import Any, List, Optional, Tuple
 
 # third-party packages
 from loguru import logger
@@ -7,6 +8,21 @@ from loguru import logger
 # your own local packages
 from src.config import config
 
+
+def custom_ts_extractor(
+    value: Any,
+    headers: Optional[List[Tuple[str, bytes]]],
+    timestamp: float,
+    timestamp_type #: TimestampType,
+) -> int:
+    """
+    Specifying a custom timestamp extractor to use the timestamp from the message payload 
+    instead of Kafka timestamp.
+
+    We want to use the `timestamp_ms` field from the message value, and not the timestamp
+    of the message that Kafka generates when the message is saved into the Kafka topic.
+    """
+    return value["timestamp_ms"]
 
 def trade_to_ohlc(
     kafka_input_topic: str,
@@ -39,9 +55,14 @@ def trade_to_ohlc(
         auto_offset_reset='earliest',  # process all messages from the input topic when this service starts
         # auto_create_reset="latest", # forget about pass messages, process only the ones coming from this moment
     )
-
+    
     # specify input and output topics for this application
-    input_topic = app.topic(name=kafka_input_topic, value_serializer='json')
+    input_topic = app.topic(
+        name=kafka_input_topic,
+        value_serializer='json',
+        # timestamp_extractor=lambda x: x['timestamp_ms'],    
+        timestamp_extractor=custom_ts_extractor,
+    )
     output_topic = app.topic(name=kafka_output_topic, value_serializer='json')
 
     # creating a streaming dataframe

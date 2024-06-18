@@ -82,8 +82,6 @@ class KrakenRestAPI:
             f'Initializing KrakenRestAPI: from_ms={self.from_ms}, to_ms={self.to_ms}'
         )
 
-        # breakpoint()
-
         # the timestamp from which we want to fetch historical data
         # this will be updated after each batch of trades is fetched from the API
         # self.since_ms = from_ms
@@ -147,7 +145,7 @@ class KrakenRestAPI:
         # parse string into dictionary
         data = json.loads(response.text)
 
-        # TODO/CHALLENGE
+        # TODO: Error handling
         # It can happen that we get an error response from KrakenRESTAP like the following:
         # data = {'error': ['EGeneral:Too many requests']}
         # To solve this have several options
@@ -160,14 +158,16 @@ class KrakenRestAPI:
         # and cross your fingers.
         #
         # Option 3. Implement both Option 1 and Option 2, so you don't need to cross your fingers.
-
-        # TODO: check if there is an error in the response, right now we don't do any
-        # error handling
+        #
+        # Here is an example of how you could implement Option 2
         if ('error' in data) and ('EGeneral:Too many requests' in data['error']):
             # slow down the rate at which we are making requests to the Kraken API
             logger.info('Too many requests. Sleeping for 30 seconds')
             sleep(30)
 
+        # Python trick
+        # Instead of initializing an empty list and appending to it, like this
+        #
         # trades = []
         # for trade in data['result'][self.product_ids[0]]:
         #     trades.append({
@@ -175,13 +175,8 @@ class KrakenRestAPI:
         #         'volume': float(trade[1]),
         #         'time': int(trade[2]),
         #     })
-
-        # little trick. Instead of initializing an empty list and appending to it, you
-        # can use a list comprehension to do the same thing
-        # try:
-        if 'result' not in data:
-            breakpoint()
-
+        #
+        # You can use a list comprehension to do the same thing
         trades = [
             Trade(
                 price=float(trade[0]),
@@ -191,8 +186,6 @@ class KrakenRestAPI:
             )
             for trade in data['result'][self.product_id]
         ]
-        # except KeyError:
-        #     breakpoint()
 
         # filter out trades that are after the end timestamp
         trades = [trade for trade in trades if trade.timestamp_ms <= self.to_ms]
@@ -202,13 +195,9 @@ class KrakenRestAPI:
         self.last_trade_ms = last_ts_in_ns // 1_000_000
         self._is_done = self.last_trade_ms >= self.to_ms
 
-        # breakpoint()
-
         logger.debug(f'Fetched {len(trades)} trades')
         # log the last trade timestamp
-        logger.debug(f'Last trade timestamp: {self.last_trade_ms}')
-
-        # breakpoint()
+        logger.debug(f'Last trade timestamp: {ts_to_date(self.last_trade_ms)}')
 
         # slow down the rate at which we are making requests to the Kraken API
         sleep(1)
@@ -217,4 +206,20 @@ class KrakenRestAPI:
 
     def is_done(self) -> bool:
         return self._is_done
-        # return self.since_ms >= self.to_ms
+
+
+def ts_to_date(ts: int) -> str:
+    """
+    Transform a timestamp in Unix milliseconds to a human-readable date
+
+    Args:
+        ts (int): A timestamp in Unix milliseconds
+
+    Returns:
+        str: A human-readable date in the format '%Y-%m-%d %H:%M:%S'
+    """
+    from datetime import datetime, timezone
+
+    return datetime.fromtimestamp(ts / 1000, tz=timezone.utc).strftime(
+        '%Y-%m-%d %H:%M:%S'
+    )

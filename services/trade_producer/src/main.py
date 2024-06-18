@@ -29,7 +29,10 @@ def produce_trades(
     Returns:
         None
     """
-    # This validation is done inside the config.py file so we don't need it here.
+    # Trick
+    # This input parameter validation was first done here, but then moved to the
+    # Config class in src.config, using Pydantic Settings.
+    # I recommend you validate config parameters in your Config object using Pydantic Settings
     # assert live_or_historical in {
     #     'live',
     #     'historical',
@@ -105,7 +108,8 @@ if __name__ == '__main__':
     # parser.add_argument('--kafka_topic', type=str, required=True)
     # args = parser.parse_args()
 
-    # logger.debug(config.model_dump())
+    logger.debug('Configuration:')
+    logger.debug(config.model_dump())
 
     # import os
     # breakpoint()

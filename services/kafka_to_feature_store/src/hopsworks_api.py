@@ -1,6 +1,7 @@
+from typing import List
+
 import hopsworks
 import pandas as pd
-from typing import List
 
 from src.config import config
 
@@ -39,9 +40,9 @@ def push_data_to_feature_store(
     ohlc_feature_group = feature_store.get_or_create_feature_group(
         name=feature_group_name,
         version=feature_group_version,
-        description="OHLC data coming from Kraken",
-        primary_key=["product_id", "timestamp"],
-        event_time="timestamp",
+        description='OHLC data coming from Kraken',
+        primary_key=['product_id', 'timestamp'],
+        event_time='timestamp',
         online_enabled=True,
     )
 
@@ -55,6 +56,8 @@ def push_data_to_feature_store(
     ohlc_feature_group.insert(
         data,
         write_options={
-            "start_offline_materialization": True if online_or_offline == "offline" else False
-        }
+            'start_offline_materialization': True
+            if online_or_offline == 'offline'
+            else False
+        },
     )

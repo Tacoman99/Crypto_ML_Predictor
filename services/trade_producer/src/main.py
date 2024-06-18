@@ -55,7 +55,8 @@ def produce_trades(
         kraken_api = KrakenRestAPIMultipleProducts(
             product_ids=product_ids,
             last_n_days=last_n_days,
-            n_threads=len(product_ids),
+            n_threads=1, #len(product_ids),
+            cache_dir=config.cache_dir_historical_data,
         )
 
     logger.info('Creating the producer...')
@@ -67,6 +68,8 @@ def produce_trades(
             if kraken_api.is_done():
                 logger.info('Done fetching historical data')
                 break
+            
+            # breakpoint()
 
             # Get the trades from the Kraken API
             trades: List[Trade] = kraken_api.get_trades()
@@ -75,28 +78,21 @@ def produce_trades(
             # Challenge 2: Send an event with trade latency to Prometheus, to monitor the trade latency
 
             for trade in trades:
+
                 # Serialize an event using the defined Topic
                 message = topic.serialize(
-                    # key=trade['product_id'],
-                    # value=trade,
-                    # timestamp_ms=trade['time'] * 1000, # convert to milliseconds
                     key=trade.product_id,
                     value=trade.model_dump(),
                 )
-
-                # breakpoint()
 
                 # Produce a message into the Kafka topic
                 producer.produce(
                     topic=topic.name,
                     value=message.value,
                     key=message.key,
-                    # timestamp=message.timestamp,
                 )
 
-                logger.info(trade)
-
-            # sleep(1)
+            # logger.info(f'Produced {len(trades)} trades to Kafka topic {topic.name}')
 
 
 if __name__ == '__main__':

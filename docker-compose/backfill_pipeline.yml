@@ -5,22 +5,27 @@
 # make sure that I can connect to the redpanda_broker
 version: "3.7"
 name: backfill_pipeline
+
 networks:
   redpanda_network:
-    name: redpanda_network
-    driver: bridge
-services:
-  
+    external: true
+
+volumes:
+  trade-producer-volume:
+
+services:  
   trade_producer:
     # container_name: trade_producer
     build:
       context: ../services/trade_producer
     networks:
       - redpanda_network
+    env_file:
+      - ../services/trade_producer/setup_historical_config.sh
     environment:
       KAFKA_BROKER_ADDRESS: redpanda-0:9092
-    env_file:
-      - ../services/trade_producer/historical.env
+    volumes:
+      - trade-producer-volume:/tmp/historical_trade_data
       
   trade_to_ohlc:
     # container_name: trade_to_ohlc
@@ -31,7 +36,7 @@ services:
     environment:
       KAFKA_BROKER_ADDRESS: redpanda-0:9092
     env_file:
-      - ../services/trade_to_ohlc/historical.env
+      - ../services/trade_to_ohlc/setup_historical_config.sh
 
   kafka_to_feature_store:
     # container_name: kafka_to_feature_store
@@ -42,5 +47,6 @@ services:
     environment:
       KAFKA_BROKER_ADDRESS: redpanda-0:9092
     env_file:
-      - ../services/kafka_to_feature_store/historical.env
-      - ../services/kafka_to_feature_store/.credentials.env
+      - ../services/kafka_to_feature_store/setup_historical_config.sh
+      - ../services/kafka_to_feature_store/setup_credentials.sh
+

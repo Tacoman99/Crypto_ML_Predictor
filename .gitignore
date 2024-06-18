@@ -191,4 +191,4 @@ trust_policy.json
 ca.cert
 *.pkl
 **/state
-**/.credentials.env
+**/setup_credentials.sh

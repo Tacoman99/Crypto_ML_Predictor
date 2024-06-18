@@ -1,5 +1,5 @@
 export KAFKA_TOPIC=ohlc
-export KAFKA_CONSUMER_GROUP=ohlc_consumer_group
+export KAFKA_CONSUMER_GROUP=ohlc_consumer_group_99
 export FEATURE_GROUP_NAME=ohlc_feature_group
 export FEATURE_GROUP_VERSION=1
 

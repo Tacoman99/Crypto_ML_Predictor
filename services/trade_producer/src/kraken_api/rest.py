@@ -3,6 +3,7 @@ from time import sleep
 from typing import Dict, List, Tuple, Optional
 
 from loguru import logger
+import requests
 
 from src.kraken_api.trade import Trade
 
@@ -13,11 +14,12 @@ class KrakenRestAPIMultipleProducts:
         product_ids: List[str],
         last_n_days: int,
         n_threads: Optional[int] = 1,
+        cache_dir: Optional[str] = None,
     ) -> None:
         self.product_ids = product_ids
 
         self.kraken_apis = [
-            KrakenRestAPI(product_id=product_id, last_n_days=last_n_days)
+            KrakenRestAPI(product_id=product_id, last_n_days=last_n_days, cache_dir=cache_dir)
             for product_id in product_ids
         ]
 
@@ -89,9 +91,8 @@ class KrakenRestAPI:
     def __init__(
         self,
         product_id: str,
-        # from_ms: int,
-        # to_ms: int
         last_n_days: int,
+        cache_dir: Optional[str] = None,
     ) -> None:
         """
         Basic initialization of the Kraken Rest API.
@@ -99,6 +100,7 @@ class KrakenRestAPI:
         Args:
             product_id (str): One product ID for which we want to get the trades.
             last_n_days (int): The number of days from which we want to get historical data.
+            cache_dir (Optional[str]): The directory where we will store the historical data to
 
         Returns:
             None
@@ -107,7 +109,7 @@ class KrakenRestAPI:
         self.from_ms, self.to_ms = self._init_from_to_ms(last_n_days)
 
         logger.debug(
-            f'Initializing KrakenRestAPI: from_ms={self.from_ms}, to_ms={self.to_ms}'
+            f'Initializing KrakenRestAPI: from_ms={ts_to_date(self.from_ms)}, to_ms={ts_to_date(self.to_ms)}'
         )
 
         # the timestamp from which we want to fetch historical data
@@ -117,7 +119,14 @@ class KrakenRestAPI:
 
         # are we done fetching historical data?
         # Yes, if the last batch of trades has a data['result'][product_id]['last'] >= self.to_ms
-        self._is_done = False
+        # self._is_done = False
+
+        # cache_dir is the directory where we will store the historical data to speed up
+        # service restarts
+        self.use_cache = False
+        if cache_dir is not None:
+            self.cache = CachedTradeData(cache_dir)
+            self.use_cache = True
 
     @staticmethod
     def _init_from_to_ms(last_n_days: int) -> Tuple[int, int]:
@@ -148,6 +157,46 @@ class KrakenRestAPI:
 
     def get_trades(self) -> List[Trade]:
         """
+        Returns the next batch of trades for the product_id from
+        -> the cache (if `self.use_cache == True` and the data is in the cache)
+        -> Otherwise, from the Kraken REST API.
+
+        Args:
+            None
+
+        Returns:
+            List[Trade]: A list of trades for the product_id
+        """
+        since_ns = self.last_trade_ms * 1_000_000
+        # if ns_to_date(since_ns) == '2024-04-30 18:33:41':
+            # breakpoint()
+        if self.use_cache:
+            # cache is enabled, so we try to read the data from the cache
+            trades: List[Trade] = self.cache.read(self.product_id, since_ns)
+            # if the list of trades is not empty, return it
+            if len(trades) > 0:
+                logger.debug(f'Loaded {len(trades)} trades for {self.product_id}, since={ns_to_date(since_ns)} from the cache')
+                
+                # update the last_trade_ms and return the trades
+                self.last_trade_ms = trades[-1].timestamp_ms + 1
+                return trades
+        
+        # otherwise, fetch the data from the Kraken REST API
+        trades = self.get_trades_from_api()
+        logger.debug(f'Fetched {len(trades)} trades for {self.product_id}, since={ns_to_date(since_ns)}')
+        
+        if self.use_cache:
+            # write the data to the cache
+            self.cache.write(self.product_id, since_ns, trades)
+            logger.debug(f'Wrote to cache for {self.product_id}, since={ns_to_date(since_ns)}')
+        
+        # update the last_trade_ms
+        self.last_trade_ms = trades[-1].timestamp_ms + 1
+
+        return trades
+
+    def get_trades_from_api(self) -> List[Trade]:
+        """
         Fetches a batch of trades from the Kraken Rest API and returns them as a list
         of dictionaries.
 
@@ -157,17 +206,15 @@ class KrakenRestAPI:
         Returns:
             List[Trade]: A list of dictionaries, where each dictionary contains the trade data.
         """
-        import requests
-
+        # Replace the placeholders in the URL with the actual values for
+        # - product_id
+        # - since_ns
+        since_ns = self.last_trade_ms * 1_000_000
         payload = {}
         headers = {'Accept': 'application/json'}
+        url = self.URL.format(product_id=self.product_id, since_sec=since_ns)
 
-        # replacing the placeholders in the URL with the actual values for
-        # - product_id
-        # - since_ms
-        since_sec = self.last_trade_ms // 1000
-        url = self.URL.format(product_id=self.product_id, since_sec=since_sec)
-
+        # make the request to the Kraken REST API
         response = requests.request('GET', url, headers=headers, data=payload)
 
         # parse string into dictionary
@@ -218,14 +265,12 @@ class KrakenRestAPI:
         # filter out trades that are after the end timestamp
         trades = [trade for trade in trades if trade.timestamp_ms <= self.to_ms]
 
-        # check if we are done fetching historical data
-        last_ts_in_ns = int(data['result']['last'])
-        self.last_trade_ms = last_ts_in_ns // 1_000_000
-        self._is_done = self.last_trade_ms >= self.to_ms
+        # # check if we are done fetching historical data
+        # last_ts_in_ns = int(data['result']['last'])
+        # self.last_trade_ms = last_ts_in_ns // 1_000_000
 
-        logger.debug(f'Fetched {len(trades)} trades')
-        # log the last trade timestamp
-        logger.debug(f'Last trade timestamp: {ts_to_date(self.last_trade_ms)}')
+        # # log the last trade timestamp
+        # logger.debug(f'Last trade timestamp for {self.product_id}: {ts_to_date(self.last_trade_ms)}')
 
         # slow down the rate at which we are making requests to the Kraken API
         sleep(1)
@@ -233,7 +278,57 @@ class KrakenRestAPI:
         return trades
 
     def is_done(self) -> bool:
-        return self._is_done
+        # return self._is_done
+        return self.last_trade_ms >= self.to_ms
+
+
+from pathlib import Path
+class CachedTradeData:
+    """
+    A class to handle the caching of trade data
+    """
+    def __init__(self, cache_dir: str) -> None:
+        self.cache_dir = Path(cache_dir)
+
+        if not self.cache_dir.exists():
+            # create the cache directory if it does not exist
+            self.cache_dir.mkdir(parents=True)
+
+    def read(self, product_id: str, since_sec: int) -> List[Trade]:
+        """
+        Reads trade data from the cache for a given product_id and since_sec timestamp.
+        """
+        file_path = self._get_file_path(product_id, since_sec)
+        
+        if file_path.exists():
+            # read the data from the parquet file
+            import pandas as pd
+            data = pd.read_parquet(file_path)
+            # transform the data to a list of Trade objects
+            return [Trade(**trade) for trade in data.to_dict(orient='records')]
+        
+        return []
+    
+    def write(self, product_id: str, since_sec: int, trades: List[Trade]) -> None:
+        """
+        Saves the given trades to a parquet file in the cache directory.
+        """
+        # transform the trades to a pandas DataFrame
+        import pandas as pd
+        data = pd.DataFrame([trade.model_dump() for trade in trades])
+        
+        # write the DataFrame to a parquet file
+        file_path = self._get_file_path(product_id, since_sec)
+        data.to_parquet(file_path)
+        
+    def _get_file_path(self, product_id: str, from_ms: int) -> str:
+        """
+        Returns the file path where the trade data for the given product_id and from_ms timestamp
+        will be stored.
+        """
+        return self.cache_dir / f'{product_id.replace("/","-")}_{from_ms}.parquet'
+
+    
 
 
 def ts_to_date(ts: int) -> str:
@@ -251,3 +346,17 @@ def ts_to_date(ts: int) -> str:
     return datetime.fromtimestamp(ts / 1000, tz=timezone.utc).strftime(
         '%Y-%m-%d %H:%M:%S'
     )
+
+def ns_to_date(ns: int) -> str:
+    """
+    Transform a timestamp in Unix nanoseconds to a human-readable date
+
+    Args:
+        ns (int): A timestamp in Unix nanoseconds
+
+    Returns:
+        str: A human-readable date in the format '%Y-%m-%d %H:%M:%S'
+    """
+    from datetime import datetime, timezone
+
+    return datetime.fromtimestamp(ns / 1_000_000_000, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S')

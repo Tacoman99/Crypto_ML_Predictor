@@ -1,10 +1,11 @@
+import json
 from typing import Optional
 
-from quixstreams import Application
 from loguru import logger
-import json
+from quixstreams import Application
 
 from src.hopsworks_api import push_data_to_feature_store
+
 
 def get_current_utc_sec() -> int:
     """
@@ -17,16 +18,19 @@ def get_current_utc_sec() -> int:
         int: The current UTC time expressed in seconds since the epoch.
     """
     from datetime import datetime, timezone
+
     return int(datetime.now(timezone.utc).timestamp())
 
 
 def kafka_to_feature_store(
     kafka_topic: str,
     kafka_broker_address: str,
+    kafka_consumer_group: str,
     feature_group_name: str,
     feature_group_version: int,
     buffer_size: Optional[int] = 1,
     live_or_historical: Optional[str] = 'live',
+    save_every_n_sec: Optional[int] = 600,
 ) -> None:
     """
     Reads `ohlc` data from the Kafka topic and writes it to the feature store.
@@ -36,20 +40,24 @@ def kafka_to_feature_store(
     Args:
         kafka_topic (str): The Kafka topic to read from.
         kafka_broker_address (str): The address of the Kafka broker.
+        kafka_consumer_group (str): The Kafka consumer group we use for reading messages.
         feature_group_name (str): The name of the feature group to write to.
         feature_group_version (int): The version of the feature group to write to.
         buffer_size (int): The number of messages to read from Kafka before writing to the feature store.
         live_or_historical (str): Whether we are saving live data to the Feature or historical data.
             Live data goes to the online feature store
             While historical data goes to the offline feature store.
-    
+        save_every_n_sec (int): The max seconds to wait before writing the data to the
+            feature store.
+
     Returns:
         None
     """
     app = Application(
         broker_address=kafka_broker_address,
-        consumer_group="kafka_to_feature_store",
-        # auto_offset_reset="earliest",
+        consumer_group=kafka_consumer_group,
+        # auto_offset_reset="earliest" if live_or_historical == 'historical' else "latest",
+        auto_offset_reset='latest',
     )
 
     # get current UTC time in seconds
@@ -68,103 +76,89 @@ def kafka_to_feature_store(
         while True:
             msg = consumer.poll(1)
 
-            if msg is None:
-                # There are no new messages in the input topic.
-                # Instead of just skipping, we will check when was the last time we 
-                # pushed features to the feature store.
-                # If more than N minutes have passed, we will push the data to the feature store
-                n_sec = 10
+            # number of seconds since the last time we saved data to the feature store
+            sec_since_last_saved = (
+                get_current_utc_sec() - last_saved_to_feature_store_ts
+            )
 
-                logger.debug(f'No new messages in the input topic {kafka_topic}')
-
-                if (get_current_utc_sec() - last_saved_to_feature_store_ts) > n_sec:
-                    
-                    logger.debug('Exceeded timer limit! We push the data to the feature store.')
-
-                    # push the data to the feature store
-                    push_data_to_feature_store(
-                        feature_group_name=feature_group_name,
-                        feature_group_version=feature_group_version,
-                        data=buffer,
-                        online_or_offline='online' if live_or_historical == 'live' else 'offline',
-                    )
-
-                    # reset the buffer
-                    # Thanks Rosina!
-                    buffer = []
-                    
-                else:
-                    logger.debug('We haven\'t exceeded the timer limit yet! Skipp and \
-                                 continue polling messages from Kafka.')
-                    # we haven't hit the timer limit, so we skip and continue polling
-                    # messages from the Kafka topic
-                    continue
-            
-            elif msg.error():
+            if (msg is not None) and msg.error():
+                # We have a message but it is an error.
+                # We just log the error and continue
                 logger.error('Kafka error:', msg.error())
+                continue
 
-                # If the message is an error, raise an exception
-                # raise Exception('Kafka error:', msg.error())
-                
+            elif (msg is None) and (sec_since_last_saved < save_every_n_sec):
+                # There are no new messages in the input topic and we haven't hit the timer
+                # limit yet. We skip and continue polling messages from Kafka.
+                logger.debug('No new messages in the input topic')
+                logger.debug(
+                    f'Last saved to feature store {sec_since_last_saved} seconds ago'
+                )
+                logger.debug(f'We have not hit the {save_every_n_sec} second limit.')
                 continue
 
             else:
-                # there is data we need now to send to the feature store
-                
-                # step 1 -> parse the message from kafka into a dictionary
-                ohlc = json.loads(msg.value().decode('utf-8'))
-
-                # append the data to the buffer
-                buffer.append(ohlc)
-
-                # breakpoint()
-
-                # if the buffer is full, write the data to the feature store
-                if len(buffer) >= buffer_size:
-                    
-                    # step 2 -> write the data to the feature store
-                    push_data_to_feature_store(
-                        feature_group_name=feature_group_name,
-                        feature_group_version=feature_group_version,
-                        data=buffer,
-                        online_or_offline='online' if live_or_historical == 'live' else 'offline',
+                # either we have a message or we have hit the timer limit
+                # if we have a message we need to add it to the buffer
+                if msg is not None:
+                    # append the data to the buffer
+                    ohlc = json.loads(msg.value().decode('utf-8'))
+                    buffer.append(ohlc)
+                    logger.debug(
+                        f'Message was pushed to buffer. Buffer size={len(buffer)}'
                     )
 
-                    # reset the buffer
-                    buffer = []
+                    # # Store the offset of the processed message on the Consumer
+                    # # for the auto-commit mechanism.
+                    # # It will send it to Kafka in the background.
+                    # # Storing offset only after the message is processed enables at-least-once delivery
+                    # # guarantees.
+                    # consumer.store_offsets(message=msg)
 
-                    # update the `last_saved_to_feature_ts` to the current time
-                    last_saved_to_feature_store_ts = get_current_utc_sec()
+                # if the buffer is full or we have hit the timer limit,
+                # we write the data to the feature store
+                if (len(buffer) >= buffer_size) or (
+                    sec_since_last_saved >= save_every_n_sec
+                ):
+                    # if the buffer is not empty we write the data to the feature store
+                    if len(buffer) > 0:
+                        try:
+                            push_data_to_feature_store(
+                                feature_group_name=feature_group_name,
+                                feature_group_version=feature_group_version,
+                                data=buffer,
+                                online_or_offline='online'
+                                if live_or_historical == 'live'
+                                else 'offline',
+                            )
+                        except Exception as e:
+                            logger.error(
+                                f'Failed to push data to the feature store: {e}'
+                            )
+                            continue
 
-                # # step 2 -> write the data to the feature store
-                # push_data_to_feature_store(
-                #     feature_group_name=feature_group_name,
-                #     feature_group_version=feature_group_version,
-                #     data=ohlc,
-                # )
+                        # reset the buffer
+                        # Thanks Rosina!
+                        buffer = []
 
-                # breakpoint()
+                        last_saved_to_feature_store_ts = get_current_utc_sec()
 
-            # Store the offset of the processed message on the Consumer 
-            # for the auto-commit mechanism.
-            # It will send it to Kafka in the background.
-            # Storing offset only after the message is processed enables at-least-once delivery
-            # guarantees.
-            consumer.store_offsets(message=msg)
 
 if __name__ == '__main__':
-
     from src.config import config
+
     logger.debug(config.model_dump())
 
     try:
         kafka_to_feature_store(
             kafka_topic=config.kafka_topic,
             kafka_broker_address=config.kafka_broker_address,
+            kafka_consumer_group=config.kafka_consumer_group,
             feature_group_name=config.feature_group_name,
             feature_group_version=config.feature_group_version,
             buffer_size=config.buffer_size,
             live_or_historical=config.live_or_historical,
+            save_every_n_sec=config.save_every_n_sec,
         )
     except KeyboardInterrupt:
         logger.info('Exiting neatly!')

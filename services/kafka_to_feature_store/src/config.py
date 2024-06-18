@@ -1,15 +1,10 @@
-import os
-from dotenv import load_dotenv, find_dotenv
-from pydantic import field_validator
-from pydantic_settings import BaseSettings
 from typing import Optional
 
-# load my .env file variables as environment variables so I can access them
-# with os.environ[] statements
-# load_dotenv(find_dotenv())
+from pydantic import field_validator
+from pydantic_settings import BaseSettings
+
 
 class Config(BaseSettings):
-    
     kafka_broker_address: Optional[str] = None
     kafka_topic: str
     kafka_consumer_group: str
@@ -37,5 +32,6 @@ class Config(BaseSettings):
             'historical',
         }, f'Invalid value for live_or_historical: {value}'
         return value
+
 
 config = Config()

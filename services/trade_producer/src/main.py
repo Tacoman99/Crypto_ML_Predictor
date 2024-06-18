@@ -55,6 +55,7 @@ def produce_trades(
         kraken_api = KrakenRestAPIMultipleProducts(
             product_ids=product_ids,
             last_n_days=last_n_days,
+            n_threads=len(product_ids),
         )
 
     logger.info('Creating the producer...')

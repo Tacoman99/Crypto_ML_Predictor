@@ -1,6 +1,6 @@
 import json
 from time import sleep
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 
 from loguru import logger
 
@@ -12,6 +12,7 @@ class KrakenRestAPIMultipleProducts:
         self,
         product_ids: List[str],
         last_n_days: int,
+        n_threads: Optional[int] = 1,
     ) -> None:
         self.product_ids = product_ids
 
@@ -19,6 +20,8 @@ class KrakenRestAPIMultipleProducts:
             KrakenRestAPI(product_id=product_id, last_n_days=last_n_days)
             for product_id in product_ids
         ]
+
+        self.n_threads = n_threads
 
     def get_trades(self) -> List[Dict]:
         """
@@ -32,17 +35,42 @@ class KrakenRestAPIMultipleProducts:
             List[Dict]: A list of dictionaries, where each dictionary contains the trade
             data, for all product_ids in self.product_ids
         """
-        trades: List[Dict] = []
+        if self.n_threads == 1:
+            # this is the sequential version
+            trades: List[Dict] = []
 
-        for kraken_api in self.kraken_apis:
-            if kraken_api.is_done():
-                # if we are done fetching historical data for this product_id, skip it
-                continue
-            else:
-                trades += kraken_api.get_trades()
+            for kraken_api in self.kraken_apis:
+                if kraken_api.is_done():
+                    # if we are done fetching historical data for this product_id, skip it
+                    continue
+                else:
+                    trades += kraken_api.get_trades()
+        else:
+            # this is the parallel version
+            from concurrent.futures import ThreadPoolExecutor
 
+            with ThreadPoolExecutor(max_workers=self.n_threads) as executor:
+                trades = list(executor.map(self.get_trades_for_one_product, self.kraken_apis))
+                # trades is a list of lists, so we need to flatten it
+                trades = [trade for sublist in trades for trade in sublist]
+                
         return trades
 
+    def get_trades_for_one_product(self, kraken_api: 'KrakenRestAPI') -> List[Trade]:
+        """
+        Returns next batch of trades for a given kraken_api.
+        
+        Args:
+            kraken_api (KrakenRestAPI): An instance of KrakenRestAPI from which we want to
+            fetch trades.
+
+        Returns:
+            List[Trade]: A list of trades for the given kraken_api
+        """
+        if not kraken_api.is_done():
+            return kraken_api.get_trades()
+        return []
+    
     def is_done(self) -> bool:
         """
         Returns True if all kraken_apis in self.kraken_apis are done fetching historical.

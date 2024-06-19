@@ -249,22 +249,15 @@ class KrakenRestAPI:
             # slow down the rate at which we are making requests to the Kraken API
             sleep(1)
 
+        # update the last_trade_ms and return the trades
+        self.last_trade_ms = trades[-1].timestamp_ms + 1
+
         # filter out trades that are after the end timestamp
         trades = [trade for trade in trades if trade.timestamp_ms <= self.to_ms]
 
         # if ns_to_date(since_ns) == '2024-04-30 18:33:41':
         #     # self.cache._get_file_path(url)
         #     breakpoint()
-
-        # update the last_trade_ms and return the trades
-        self.last_trade_ms = trades[-1].timestamp_ms + 1
-
-        # # check if we are done fetching historical data
-        # last_ts_in_ns = int(data['result']['last'])
-        # self.last_trade_ms = last_ts_in_ns // 1_000_000
-
-        # # log the last trade timestamp
-        # logger.debug(f'Last trade timestamp for {self.product_id}: {ts_to_date(self.last_trade_ms)}')
 
         return trades
 

@@ -1,9 +1,10 @@
 import json
+from pathlib import Path
 from time import sleep
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Optional, Tuple
 
-from loguru import logger
 import requests
+from loguru import logger
 
 from src.kraken_api.trade import Trade
 
@@ -19,7 +20,9 @@ class KrakenRestAPIMultipleProducts:
         self.product_ids = product_ids
 
         self.kraken_apis = [
-            KrakenRestAPI(product_id=product_id, last_n_days=last_n_days, cache_dir=cache_dir)
+            KrakenRestAPI(
+                product_id=product_id, last_n_days=last_n_days, cache_dir=cache_dir
+            )
             for product_id in product_ids
         ]
 
@@ -52,16 +55,18 @@ class KrakenRestAPIMultipleProducts:
             from concurrent.futures import ThreadPoolExecutor
 
             with ThreadPoolExecutor(max_workers=self.n_threads) as executor:
-                trades = list(executor.map(self.get_trades_for_one_product, self.kraken_apis))
+                trades = list(
+                    executor.map(self.get_trades_for_one_product, self.kraken_apis)
+                )
                 # trades is a list of lists, so we need to flatten it
                 trades = [trade for sublist in trades for trade in sublist]
-                
+
         return trades
 
     def get_trades_for_one_product(self, kraken_api: 'KrakenRestAPI') -> List[Trade]:
         """
         Returns next batch of trades for a given kraken_api.
-        
+
         Args:
             kraken_api (KrakenRestAPI): An instance of KrakenRestAPI from which we want to
             fetch trades.
@@ -72,7 +77,7 @@ class KrakenRestAPIMultipleProducts:
         if not kraken_api.is_done():
             return kraken_api.get_trades()
         return []
-    
+
     def is_done(self) -> bool:
         """
         Returns True if all kraken_apis in self.kraken_apis are done fetching historical.
@@ -155,7 +160,7 @@ class KrakenRestAPI:
 
         return from_ms, to_ms
 
-    def get_trades(self) -> List[Trade]:
+    def get_trades_old(self) -> List[Trade]:
         """
         Returns the next batch of trades for the product_id from
         -> the cache (if `self.use_cache == True` and the data is in the cache)
@@ -169,33 +174,39 @@ class KrakenRestAPI:
         """
         since_ns = self.last_trade_ms * 1_000_000
         # if ns_to_date(since_ns) == '2024-04-30 18:33:41':
-            # breakpoint()
+        # breakpoint()
         if self.use_cache:
             # cache is enabled, so we try to read the data from the cache
             trades: List[Trade] = self.cache.read(self.product_id, since_ns)
             # if the list of trades is not empty, return it
             if len(trades) > 0:
-                logger.debug(f'Loaded {len(trades)} trades for {self.product_id}, since={ns_to_date(since_ns)} from the cache')
-                
+                logger.debug(
+                    f'Loaded {len(trades)} trades for {self.product_id}, since={ns_to_date(since_ns)} from the cache'
+                )
+
                 # update the last_trade_ms and return the trades
                 self.last_trade_ms = trades[-1].timestamp_ms + 1
                 return trades
-        
+
         # otherwise, fetch the data from the Kraken REST API
         trades = self.get_trades_from_api()
-        logger.debug(f'Fetched {len(trades)} trades for {self.product_id}, since={ns_to_date(since_ns)}')
-        
+        logger.debug(
+            f'Fetched {len(trades)} trades for {self.product_id}, since={ns_to_date(since_ns)}'
+        )
+
         if self.use_cache:
             # write the data to the cache
             self.cache.write(self.product_id, since_ns, trades)
-            logger.debug(f'Wrote to cache for {self.product_id}, since={ns_to_date(since_ns)}')
-        
+            logger.debug(
+                f'Wrote to cache for {self.product_id}, since={ns_to_date(since_ns)}'
+            )
+
         # update the last_trade_ms
         self.last_trade_ms = trades[-1].timestamp_ms + 1
 
         return trades
 
-    def get_trades_from_api(self) -> List[Trade]:
+    def get_trades(self) -> List[Trade]:
         """
         Fetches a batch of trades from the Kraken Rest API and returns them as a list
         of dictionaries.
@@ -214,56 +225,83 @@ class KrakenRestAPI:
         headers = {'Accept': 'application/json'}
         url = self.URL.format(product_id=self.product_id, since_sec=since_ns)
 
-        # make the request to the Kraken REST API
-        response = requests.request('GET', url, headers=headers, data=payload)
-
-        # parse string into dictionary
-        data = json.loads(response.text)
-
-        # TODO: Error handling
-        # It can happen that we get an error response from KrakenRESTAP like the following:
-        # data = {'error': ['EGeneral:Too many requests']}
-        # To solve this have several options
-        #
-        # Option 1. Check if the `error` key is present in the `data` and has
-        # a non-empty list value. If so, we could raise an exception, or even better, implment
-        # a retry mechanism, using a library like `retry` https://github.com/invl/retry
-        #
-        # Option 2. Simply slow down the rate at which we are making requests to the Kraken API,
-        # and cross your fingers.
-        #
-        # Option 3. Implement both Option 1 and Option 2, so you don't need to cross your fingers.
-        #
-        # Here is an example of how you could implement Option 2
-        if ('error' in data) and ('EGeneral:Too many requests' in data['error']):
-            # slow down the rate at which we are making requests to the Kraken API
-            logger.info('Too many requests. Sleeping for 30 seconds')
-            sleep(30)
-
-        # Python trick
-        # Instead of initializing an empty list and appending to it, like this
-        #
-        # trades = []
-        # for trade in data['result'][self.product_ids[0]]:
-        #     trades.append({
-        #         'price': float(trade[0]),
-        #         'volume': float(trade[1]),
-        #         'time': int(trade[2]),
-        #     })
-        #
-        # You can use a list comprehension to do the same thing
-        trades = [
-            Trade(
-                price=float(trade[0]),
-                volume=float(trade[1]),
-                timestamp_ms=int(trade[2]) * 1000,
-                product_id=self.product_id,
+        if self.use_cache and self.cache.has(url):
+            # read the data from the cache
+            trades = self.cache.read(url)
+            logger.debug(
+                f'Loaded {len(trades)} trades for {self.product_id}, since={ns_to_date(since_ns)} from the cache'
             )
-            for trade in data['result'][self.product_id]
-        ]
+        else:
+            # make the request to the Kraken REST API
+            response = requests.request('GET', url, headers=headers, data=payload)
+
+            # parse string into dictionary
+            data = json.loads(response.text)
+
+            # TODO: Error handling
+            # It can happen that we get an error response from KrakenRESTAP like the following:
+            # data = {'error': ['EGeneral:Too many requests']}
+            # To solve this have several options
+            #
+            # Option 1. Check if the `error` key is present in the `data` and has
+            # a non-empty list value. If so, we could raise an exception, or even better, implment
+            # a retry mechanism, using a library like `retry` https://github.com/invl/retry
+            #
+            # Option 2. Simply slow down the rate at which we are making requests to the Kraken API,
+            # and cross your fingers.
+            #
+            # Option 3. Implement both Option 1 and Option 2, so you don't need to cross your fingers.
+            #
+            # Here is an example of how you could implement Option 2
+            if ('error' in data) and ('EGeneral:Too many requests' in data['error']):
+                # slow down the rate at which we are making requests to the Kraken API
+                logger.info('Too many requests. Sleeping for 30 seconds')
+                sleep(30)
+
+            # Python trick
+            # Instead of initializing an empty list and appending to it, like this
+            #
+            # trades = []
+            # for trade in data['result'][self.product_ids[0]]:
+            #     trades.append({
+            #         'price': float(trade[0]),
+            #         'volume': float(trade[1]),
+            #         'time': int(trade[2]),
+            #     })
+            #
+            # You can use a list comprehension to do the same thing
+            trades = [
+                Trade(
+                    price=float(trade[0]),
+                    volume=float(trade[1]),
+                    timestamp_ms=int(trade[2]) * 1000,
+                    product_id=self.product_id,
+                )
+                for trade in data['result'][self.product_id]
+            ]
+
+            logger.debug(
+                f'Fetched {len(trades)} trades for {self.product_id}, since={ns_to_date(since_ns)} from the Kraken REST API'
+            )
+
+            if self.use_cache:
+                # write the data to the cache
+                self.cache.write(url, trades)
+                logger.debug(
+                    f'Wrote to cache for {self.product_id}, since={ns_to_date(since_ns)}'
+                )
+
+            # slow down the rate at which we are making requests to the Kraken API
+            sleep(1)
 
         # filter out trades that are after the end timestamp
         trades = [trade for trade in trades if trade.timestamp_ms <= self.to_ms]
+
+        # if ns_to_date(since_ns) == '2024-04-30 18:33:41':
+        # breakpoint()
+
+        # update the last_trade_ms and return the trades
+        self.last_trade_ms = trades[-1].timestamp_ms + 1
 
         # # check if we are done fetching historical data
         # last_ts_in_ns = int(data['result']['last'])
@@ -272,9 +310,6 @@ class KrakenRestAPI:
         # # log the last trade timestamp
         # logger.debug(f'Last trade timestamp for {self.product_id}: {ts_to_date(self.last_trade_ms)}')
 
-        # slow down the rate at which we are making requests to the Kraken API
-        sleep(1)
-
         return trades
 
     def is_done(self) -> bool:
@@ -282,11 +317,11 @@ class KrakenRestAPI:
         return self.last_trade_ms >= self.to_ms
 
 
-from pathlib import Path
 class CachedTradeData:
     """
-    A class to handle the caching of trade data
+    A class to handle the caching of trade data fetched from the Kraken REST API.
     """
+
     def __init__(self, cache_dir: str) -> None:
         self.cache_dir = Path(cache_dir)
 
@@ -294,41 +329,55 @@ class CachedTradeData:
             # create the cache directory if it does not exist
             self.cache_dir.mkdir(parents=True)
 
-    def read(self, product_id: str, since_sec: int) -> List[Trade]:
+    def read(self, url: str) -> List[Trade]:
         """
-        Reads trade data from the cache for a given product_id and since_sec timestamp.
+        Reads from the cache the trade data for the given url
         """
-        file_path = self._get_file_path(product_id, since_sec)
-        
+        file_path = self._get_file_path(url)
+
         if file_path.exists():
             # read the data from the parquet file
             import pandas as pd
+
             data = pd.read_parquet(file_path)
             # transform the data to a list of Trade objects
             return [Trade(**trade) for trade in data.to_dict(orient='records')]
-        
+
         return []
-    
-    def write(self, product_id: str, since_sec: int, trades: List[Trade]) -> None:
+
+    def write(self, url: str, trades: List[Trade]) -> None:
         """
         Saves the given trades to a parquet file in the cache directory.
         """
+        if not trades:
+            return
+
         # transform the trades to a pandas DataFrame
         import pandas as pd
-        data = pd.DataFrame([trade.model_dump() for trade in trades])
-        
-        # write the DataFrame to a parquet file
-        file_path = self._get_file_path(product_id, since_sec)
-        data.to_parquet(file_path)
-        
-    def _get_file_path(self, product_id: str, from_ms: int) -> str:
-        """
-        Returns the file path where the trade data for the given product_id and from_ms timestamp
-        will be stored.
-        """
-        return self.cache_dir / f'{product_id.replace("/","-")}_{from_ms}.parquet'
 
-    
+        data = pd.DataFrame([trade.model_dump() for trade in trades])
+
+        # write the DataFrame to a parquet file
+        file_path = self._get_file_path(url)
+        data.to_parquet(file_path)
+
+    def has(self, url: str) -> bool:
+        """
+        Returns True if the cache has the trade data for the given url, False otherwise.
+        """
+        file_path = self._get_file_path(url)
+        return file_path.exists()
+
+    def _get_file_path(self, url: str) -> str:
+        """
+        Returns the file path where the trade data for the given url is (or will be) stored.
+        """
+        # use the given url to generate a unique file name in a deterministic way
+        import hashlib
+
+        url_hash = hashlib.md5(url.encode()).hexdigest()
+        return self.cache_dir / f'{url_hash}.parquet'
+        # return self.cache_dir / f'{product_id.replace ("/","-")}_{from_ms}.parquet'
 
 
 def ts_to_date(ts: int) -> str:
@@ -347,6 +396,7 @@ def ts_to_date(ts: int) -> str:
         '%Y-%m-%d %H:%M:%S'
     )
 
+
 def ns_to_date(ns: int) -> str:
     """
     Transform a timestamp in Unix nanoseconds to a human-readable date
@@ -359,4 +409,6 @@ def ns_to_date(ns: int) -> str:
     """
     from datetime import datetime, timezone
 
-    return datetime.fromtimestamp(ns / 1_000_000_000, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+    return datetime.fromtimestamp(ns / 1_000_000_000, tz=timezone.utc).strftime(
+        '%Y-%m-%d %H:%M:%S'
+    )

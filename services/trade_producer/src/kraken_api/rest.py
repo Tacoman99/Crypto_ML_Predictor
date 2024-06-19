@@ -160,52 +160,6 @@ class KrakenRestAPI:
 
         return from_ms, to_ms
 
-    def get_trades_old(self) -> List[Trade]:
-        """
-        Returns the next batch of trades for the product_id from
-        -> the cache (if `self.use_cache == True` and the data is in the cache)
-        -> Otherwise, from the Kraken REST API.
-
-        Args:
-            None
-
-        Returns:
-            List[Trade]: A list of trades for the product_id
-        """
-        since_ns = self.last_trade_ms * 1_000_000
-        # if ns_to_date(since_ns) == '2024-04-30 18:33:41':
-        # breakpoint()
-        if self.use_cache:
-            # cache is enabled, so we try to read the data from the cache
-            trades: List[Trade] = self.cache.read(self.product_id, since_ns)
-            # if the list of trades is not empty, return it
-            if len(trades) > 0:
-                logger.debug(
-                    f'Loaded {len(trades)} trades for {self.product_id}, since={ns_to_date(since_ns)} from the cache'
-                )
-
-                # update the last_trade_ms and return the trades
-                self.last_trade_ms = trades[-1].timestamp_ms + 1
-                return trades
-
-        # otherwise, fetch the data from the Kraken REST API
-        trades = self.get_trades_from_api()
-        logger.debug(
-            f'Fetched {len(trades)} trades for {self.product_id}, since={ns_to_date(since_ns)}'
-        )
-
-        if self.use_cache:
-            # write the data to the cache
-            self.cache.write(self.product_id, since_ns, trades)
-            logger.debug(
-                f'Wrote to cache for {self.product_id}, since={ns_to_date(since_ns)}'
-            )
-
-        # update the last_trade_ms
-        self.last_trade_ms = trades[-1].timestamp_ms + 1
-
-        return trades
-
     def get_trades(self) -> List[Trade]:
         """
         Fetches a batch of trades from the Kraken Rest API and returns them as a list
@@ -224,6 +178,7 @@ class KrakenRestAPI:
         payload = {}
         headers = {'Accept': 'application/json'}
         url = self.URL.format(product_id=self.product_id, since_sec=since_ns)
+        logger.debug(f'{url=}')
 
         if self.use_cache and self.cache.has(url):
             # read the data from the cache
@@ -274,7 +229,7 @@ class KrakenRestAPI:
                 Trade(
                     price=float(trade[0]),
                     volume=float(trade[1]),
-                    timestamp_ms=int(trade[2]) * 1000,
+                    timestamp_ms=int(trade[2] * 1000),
                     product_id=self.product_id,
                 )
                 for trade in data['result'][self.product_id]
@@ -298,7 +253,8 @@ class KrakenRestAPI:
         trades = [trade for trade in trades if trade.timestamp_ms <= self.to_ms]
 
         # if ns_to_date(since_ns) == '2024-04-30 18:33:41':
-        # breakpoint()
+        #     # self.cache._get_file_path(url)
+        #     breakpoint()
 
         # update the last_trade_ms and return the trades
         self.last_trade_ms = trades[-1].timestamp_ms + 1

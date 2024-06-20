@@ -249,9 +249,16 @@ class KrakenRestAPI:
             # slow down the rate at which we are making requests to the Kraken API
             sleep(1)
 
-        # update the last_trade_ms and return the trades
-        self.last_trade_ms = trades[-1].timestamp_ms + 1
-
+        if trades[-1].timestamp_ms == self.last_trade_ms:
+            # if the last trade timestamp in the batch is the same as self.last_trade_ms,
+            # then we need to increment it by 1 to avoid repeating the exact same API request,
+            # which would result in an infinite loop
+            self.last_trade_ms = trades[-1].timestamp_ms + 1
+        else:
+            # otherwise, update self.last_trade_ms to the timestamp of the last trade
+            # in the batch
+            self.last_trade_ms = trades[-1].timestamp_ms
+        
         # filter out trades that are after the end timestamp
         trades = [trade for trade in trades if trade.timestamp_ms <= self.to_ms]
 

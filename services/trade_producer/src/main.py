@@ -91,6 +91,8 @@ def produce_trades(
                     key=message.key,
                 )
 
+                logger.debug(f'{trade.model_dump()}')
+
             # logger.info(f'Produced {len(trades)} trades to Kafka topic {topic.name}')
 
 

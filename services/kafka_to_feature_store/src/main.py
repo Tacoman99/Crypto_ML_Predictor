@@ -56,8 +56,8 @@ def kafka_to_feature_store(
     app = Application(
         broker_address=kafka_broker_address,
         consumer_group=kafka_consumer_group,
-        # auto_offset_reset="earliest" if live_or_historical == 'historical' else "latest",
-        auto_offset_reset='latest',
+        auto_offset_reset="earliest" if live_or_historical == 'historical' else "latest",
+        # auto_offset_reset='latest',
     )
 
     # get current UTC time in seconds
@@ -92,9 +92,9 @@ def kafka_to_feature_store(
                 # limit yet. We skip and continue polling messages from Kafka.
                 logger.debug('No new messages in the input topic')
                 logger.debug(
-                    f'Last saved to feature store {sec_since_last_saved} seconds ago'
+                    f'Last saved to feature store {sec_since_last_saved} seconds ago (limit={save_every_n_sec})'
                 )
-                logger.debug(f'We have not hit the {save_every_n_sec} second limit.')
+                # logger.debug(f'We have not hit the {save_every_n_sec} second limit.')
                 continue
 
             else:
@@ -105,7 +105,7 @@ def kafka_to_feature_store(
                     ohlc = json.loads(msg.value().decode('utf-8'))
                     buffer.append(ohlc)
                     logger.debug(
-                        f'Message was pushed to buffer. Buffer size={len(buffer)}'
+                        f'Message {ohlc} was pushed to buffer. Buffer size={len(buffer)}'
                     )
 
                     # # Store the offset of the processed message on the Consumer
@@ -131,6 +131,8 @@ def kafka_to_feature_store(
                                 if live_or_historical == 'live'
                                 else 'offline',
                             )
+                            logger.debug('Data pushed to the feature store')
+
                         except Exception as e:
                             logger.error(
                                 f'Failed to push data to the feature store: {e}'

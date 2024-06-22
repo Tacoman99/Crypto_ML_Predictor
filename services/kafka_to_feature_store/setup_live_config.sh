@@ -1,7 +1,7 @@
 export KAFKA_TOPIC=ohlc
 export KAFKA_CONSUMER_GROUP=ohlc_consumer_group_99
 export FEATURE_GROUP_NAME=ohlc_feature_group
-export FEATURE_GROUP_VERSION=1
+export FEATURE_GROUP_VERSION=3
 
 # number of elements we save at once to the Hopsworks feature store
 # For live data we want to save it to the online store as soon as possible,

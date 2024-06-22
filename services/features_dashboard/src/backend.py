@@ -2,23 +2,37 @@ from typing import List, Dict
 
 import hopsworks
 # from hopsworks.feature_store import FeatureView
+from hsfs.client.exceptions import FeatureStoreException
 import pandas as pd
 from loguru import logger
 
 from src.config import config
 
+logger.debug('Backend module loaded')
+logger.debug(f'Config: {config.model_dump()}')
+
+# Authenticate with Hopsworks API
+project = hopsworks.login(
+    project=config.hopsworks_project_name,
+    api_key_value=config.hopsworks_api_key,
+)
+
+# Get the feature store
+feature_store = project.get_feature_store()
+
+
 def get_feature_view() -> 'FeatureView':
     """
     Returns the feature view object that reads data from the feature store
     """
-    # Authenticate with Hopsworks API
-    project = hopsworks.login(
-        project=config.hopsworks_project_name,
-        api_key_value=config.hopsworks_api_key,
-    )
+    # # Authenticate with Hopsworks API
+    # project = hopsworks.login(
+    #     project=config.hopsworks_project_name,
+    #     api_key_value=config.hopsworks_api_key,
+    # )
 
-    # Get the feature store
-    feature_store = project.get_feature_store()
+    # # Get the feature store
+    # feature_store = project.get_feature_store()
 
     # Get the feature group we want to read features from
     feature_group = feature_store.get_feature_group(
@@ -55,7 +69,13 @@ def get_features_from_the_store(
 
     # For the moment, let's get all rows from this feature group
     if online_or_offline == 'offline':
-        features: pd.DataFrame = feature_view.get_batch_data()
+        try:
+            features: pd.DataFrame = feature_view.get_batch_data()
+
+        except FeatureStoreException:
+            # breakpoint()
+            # retry the call with the use_hive option. This is what Hopsworks recommends
+            features: pd.DataFrame = feature_view.get_batch_data(read_options={"use_hive": True})
     else:
         # we fetch from the online feature store.
         # we need to build this list of dictionaries with the primary keys
@@ -64,10 +84,10 @@ def get_features_from_the_store(
             return_type="pandas"
         )
 
-        # breakpoint()
-
     # sort the features by timestamp (ascending)
     features = features.sort_values(by='timestamp')
+
+    # breakpoint()
 
     # Python trick: You can also do a sort inplace. I think with this you avoid copying data and it is
     # paster
@@ -90,7 +110,7 @@ def get_primary_keys(last_n_minutes: int) -> List[Dict]:
     
     # I've just sent the `kafka_to_feature_store` service pushing a candle for
     # this timestamp for BTC/USD. Let's see if we can actually read it from the online store.
-    # timestamps = [1718882340000]
+    # timestamps = [1719068640000]
 
     # primary keys are pairs of product_id and timestamp
     primary_keys = [
@@ -106,9 +126,19 @@ def get_primary_keys(last_n_minutes: int) -> List[Dict]:
 
 if __name__ == '__main__':
 
-    from loguru import logger
+    from argparse import ArgumentParser
 
-    data = get_features_from_the_store(online_or_offline='online')
+    parser = ArgumentParser()
+    parser.add_argument('--online', action='store_true')
+    parser.add_argument('--offline', action='store_true')
+    args = parser.parse_args()
+
+    if args.online and args.offline:
+        raise ValueError('You cannot pass both --online and --offline')    
+    online_or_offline = 'offline' if args.offline else 'online'
+    
+    from loguru import logger
+    data = get_features_from_the_store(online_or_offline)
     
     logger.debug(f'Received {len(data)} rows of data from the Feature Store')
 

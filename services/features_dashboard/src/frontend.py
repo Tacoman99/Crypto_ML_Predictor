@@ -2,9 +2,11 @@
 import streamlit as st
 import pandas as pd
 from loguru import logger
+from time import sleep
 
 from src.backend import get_features_from_the_store
 from src.plot import plot_candles
+from src.config import config
 
 st.write("""
 # OHLC features dashboard
@@ -17,13 +19,19 @@ online_or_offline = st.sidebar.selectbox(
     ('online', 'offline')
 )
 
-# Load the data
-data = get_features_from_the_store(online_or_offline)
-logger.debug(f'Received {len(data)} rows of data from the Feature Store')
+# Challenge: add a time range slider to the sidebar to select the time range for which
+# we want to display the data
+# Pass this parameter to the get_features_from_the_store function to get the data
+with st.container():
+    placeholder_chart = st.empty()
 
-# Display the chart
-st.bokeh_chart(plot_candles(data.tail(1440)))
+while True:
+    # Load the data
+    data = get_features_from_the_store(online_or_offline)
+    logger.debug(f'Received {len(data)} rows of data from the Feature Store')
 
+    # Refresh the chart
+    with placeholder_chart:
+        st.bokeh_chart(plot_candles(data))
 
-# df = pd.read_csv("my_data.csv")
-# st.line_chart(df)
+    sleep(15)

@@ -26,7 +26,8 @@ services:
       KAFKA_BROKER_ADDRESS: redpanda-0:9092
     volumes:
       - trade-producer-volume:/tmp/historical_trade_data
-      
+    restart: on-failure
+
   trade_to_ohlc:
     # container_name: trade_to_ohlc
     build:
@@ -37,6 +38,7 @@ services:
       KAFKA_BROKER_ADDRESS: redpanda-0:9092
     env_file:
       - ../services/trade_to_ohlc/setup_historical_config.sh
+    restart: always
 
   kafka_to_feature_store:
     # container_name: kafka_to_feature_store
@@ -49,4 +51,4 @@ services:
     env_file:
       - ../services/kafka_to_feature_store/setup_historical_config.sh
       - ../services/kafka_to_feature_store/setup_credentials.sh
-
+    restart: always

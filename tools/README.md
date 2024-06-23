@@ -1,7 +1,7 @@
 # Steps to fill your Feature Groups with the same training data as I have
 
 ## Step 1
-Go to the `/tools` directory and run
+From this directory run
 ```
 $ poetry install
 ```

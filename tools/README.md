@@ -8,7 +8,7 @@ $ poetry install
 to create the virtual env and install all the Python dependencies.
 
 ## Step 2
-Download the CSV file I shared on Discord
+Download the CSV file I shared on Discord -> [Click here](https://discord.com/channels/1003641277021175848/1239859045448552448/1254244086584705084)
 
 
 ## Step 3

@@ -192,3 +192,4 @@ ca.cert
 *.pkl
 **/state
 **/setup_credentials.sh
+*.csv

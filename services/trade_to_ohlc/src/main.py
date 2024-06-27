@@ -80,6 +80,10 @@ def trade_to_ohlc(
             'low': value['price'],
             'close': value['price'],
             'product_id': value['product_id'],
+
+            # Uncomment this line if you plan to use `volume` in your feature engineering
+            # For you Olanrewaju!
+            # 'volume': value['volume']
         }
 
     def update_ohlc_candle(ohlc_candle: dict, trade: dict) -> dict:
@@ -99,6 +103,10 @@ def trade_to_ohlc(
             'low': min(ohlc_candle['low'], trade['price']),
             'close': trade['price'],
             'product_id': trade['product_id'],
+
+            # Uncomment this line if you plan to use `volume` in your feature engineering
+            # For you Olanrewaju!
+            # 'volume': ohlc_candle['volume'] + trade['volume']
         }
 
     # apply tranformations to the incoming data - start
@@ -131,10 +139,15 @@ def trade_to_ohlc(
     sdf['close'] = sdf['value']['close']
     sdf['product_id'] = sdf['value']['product_id']
 
+    # adding the volume key if you plan to use it generate features that depend on it
+    # For you Olanrewaju!
+    # sdf['volume'] = sdf['value']['volume']
+
     # adding a timestamp key
     sdf['timestamp'] = sdf['end']
 
     # let's keep only the keys we want in our final message
+    # don't forget to add the volume key if you plan to use it
     sdf = sdf[['timestamp', 'open', 'high', 'low', 'close', 'product_id']]
 
     # apply tranformations to the incoming data - end

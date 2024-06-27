@@ -12,7 +12,8 @@ This is used both to
 - [x] Missing data imputation.
 - [x] Create target metric we want to predict.
 
-- [ ] Build a baseline model.
-- [ ] Integrate with CometML
-- [ ] Feature engineering with talib
+- [x] Build a baseline model.
+- [x] Feature engineering with talib
 - [ ] Build an ML model
+- [ ] Integrate with CometML
+

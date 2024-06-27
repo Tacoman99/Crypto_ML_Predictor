@@ -8,7 +8,7 @@ def add_features(
 
     # we use this to compute the last observed target
     n_candles_into_future: int,
-    discretization_thresholds: list,
+    # discretization_thresholds: list,
 
     # hyper-parameters you can optimize through cross-validation
     # using a libray like Optuna
@@ -42,6 +42,7 @@ def add_features(
     """
     X_ = add_momentum_indicators(X, rsi_timeperiod, momentum_timeperiod, fillna=fillna)
     X_ = add_volatility_indicators(X_, timeperiod=volatility_timeperiod, fillna=fillna)
+    X_ = add_macd_indicator(X_, fillna=fillna)
 
     # Challenge -> You can add more features here, for example:
     # - Moving averages
@@ -54,7 +55,7 @@ def add_features(
     X_ = add_last_observed_target(
         X_,
         n_candles_into_future=n_candles_into_future,
-        discretization_thresholds=discretization_thresholds,
+        # discretization_thresholds=discretization_thresholds,
     )
 
     X_ = add_temporal_features(X_)
@@ -105,6 +106,8 @@ def add_momentum_indicators(
     X_['rsi'] = talib.RSI(X_['close'], timeperiod=rsi_timeperiod)
     X_['momentum'] = talib.MOM(X_['close'], timeperiod=momentum_timeperiod)
 
+
+
     if fillna:
         X_['rsi'] = X_['rsi'].fillna(0)
         X_['momentum'] = X_['momentum'].fillna(0)
@@ -131,10 +134,37 @@ def add_volatility_indicators(
 
     return X_
 
+def add_macd_indicator(
+    X: pd.DataFrame,
+    fastperiod: Optional[int] = 12,
+    slowperiod: Optional[int] = 26,
+    signalperiod: Optional[int] = 9,
+    fillna: Optional[bool] = True,
+) -> pd.DataFrame:
+    """
+    Adds the MACD (Moving Average Convergence Divergence) indicator to the `ts_data`
+    """
+    X_ = X.copy()
+
+    macd, macd_signal, _ = talib.MACD(
+        X_['close'],
+        fastperiod=fastperiod,
+        slowperiod=slowperiod,
+        signalperiod=signalperiod,
+    )
+    X_['MACD'] = macd
+    X_['MACD_Signal'] = macd_signal
+
+    if fillna:
+        X_['MACD'] = X_['MACD'].fillna(0)
+        X_['MACD_Signal'] = X_['MACD_Signal'].fillna(0)
+        
+    return X_
+
 def add_last_observed_target(
     X: pd.DataFrame,
     n_candles_into_future: int,
-    discretization_thresholds: list,
+    # discretization_thresholds: list,
 ) -> pd.DataFrame:
     """
     Adds the target column to the given DataFrame.
@@ -150,8 +180,7 @@ def add_last_observed_target(
     X_ = X.copy()
 
     X_['last_observed_target'] = X_['close'] \
-            .pct_change(n_candles_into_future) \
-            .apply(lambda x: discretize(x, discretization_thresholds))
+            .pct_change(n_candles_into_future)
 
     # the first `n_candles_into_future` rows will have NaN as target
     # because we don't have historical data to compute the pct_change
@@ -160,23 +189,6 @@ def add_last_observed_target(
     # - Neural Networks can't handle missing values
     # - Boosting trees can handle missing values
     # TODO: check if the model you are using can handle missing values
-    X_['last_observed_target'].fillna(1, inplace=True)
+    X_['last_observed_target'].fillna(0, inplace=True)
 
     return X_
-
-def discretize(x: float, discretization_thresholds: list) -> int:
-    """
-    Maps the given percentage change `x` to a discrete value based on the thresholds.
-    """
-    if x < discretization_thresholds[0]:
-        # DOWN
-        return 0
-    elif x < discretization_thresholds[1]:
-        # SAME
-        return 1
-    elif x >= discretization_thresholds[1]:
-        # UP
-        return 2
-    else:
-        # This will happen if x is NaN
-        None

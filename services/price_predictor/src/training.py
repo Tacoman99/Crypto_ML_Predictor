@@ -1,7 +1,9 @@
 import pandas as pd
 from loguru import logger
-from typing import Tuple
+from typing import Tuple, Optional
 
+from src.baseline_model import BaselineModel
+from src.feature_engineering import add_features
 from tools.ohlc_data_reader import OhlcDataReader
 
 
@@ -12,7 +14,6 @@ def train(
     product_id: str,
     last_n_days_to_fetch_from_store: int,
     last_n_days_to_test_model: int,
-    discretization_thresholds: list,
     prediction_window_sec: int,
 ):
     """
@@ -31,7 +32,6 @@ def train(
         product_id (str): The product id.
         last_n_days_to_fetch_from_store (int): The number of days to fetch from the feature store.
         last_n_days_to_test_model (int): The number of days to use for testing the model.
-        discretization_thresholds (list): The thresholds to discretize the close price.
         prediction_window_sec (int): The size of the prediction window in seconds.
 
     Returns:
@@ -77,21 +77,15 @@ def train(
     ohlc_train = create_target_metric(
         ohlc_train,
         ohlc_window_sec,
-        discretization_thresholds,
+        # discretization_thresholds,
         prediction_window_sec,
     )
     ohlc_test = create_target_metric(
         ohlc_test,
         ohlc_window_sec,
-        discretization_thresholds,
+        # discretization_thresholds,
         prediction_window_sec,
     )
-
-    # Plot distribution of the target
-    logger.info('Distribution of the target in the training data')
-    logger.debug(ohlc_train['target'].value_counts())
-    logger.info('Distribution of the target in the testing data')
-    logger.debug(ohlc_test['target'].value_counts())
 
     # Before training, let's split the features and the target
     X_train = ohlc_train.drop(columns=['target'])
@@ -100,35 +94,112 @@ def train(
     y_test = ohlc_test['target']
     
     # Step 5
-    # TODO: build a ML model that given the features in ohlc_train (aka all columns except 'target')
-    # predicts the target (aka ohlc_train['target'])
     # Let's build a baseline model
-    from src.baseline_model import BaselineModel
     model = BaselineModel(
         n_candles_into_future=prediction_window_sec // ohlc_window_sec,
-        discretization_thresholds=discretization_thresholds,
+        # discretization_thresholds=discretization_thresholds,
     )
     y_test_predictions = model.predict(X_test)
+    evaluate_model(
+        predictions=y_test_predictions,
+        actuals=y_test,
+        description='Baseline model on Test data',
+    )
+    y_train_predictions = model.predict(X_train)
+    evaluate_model(
+        predictions=y_train_predictions,
+        actuals=y_train,
+        description='Baseline model on Training data',
+    )
 
-    # Let's evaluate the model. It is a classifier with 3 classes
-    # Compute accuracy using scikit-learn
-    from sklearn.metrics import accuracy_score
-    accuracy = accuracy_score(y_test, y_test_predictions)
-    logger.info(f'Accuracy of the model: {accuracy}')
+    # Step 6
+    # Build a more complex model
+    X_train = add_features(
+        X_train,
+        n_candles_into_future=prediction_window_sec // ohlc_window_sec,
+    )
+    X_test = add_features(
+        X_test,
+        n_candles_into_future=prediction_window_sec // ohlc_window_sec,
+    )
+    features_to_use = [
+        'rsi',
+        'momentum',
+        'std',
+        'MACD',
+        'MACD_Signal',
 
-    # Compute the confusion matrix
-    from sklearn.metrics import confusion_matrix
-    confusion_matrix = confusion_matrix(y_test, y_test_predictions)
-    logger.info(f'Confusion matrix of the model:')
-    logger.info(confusion_matrix)
+        'last_observed_target',
+        
+        'day_of_week',
+        'hour_of_day',
+        'minute_of_hour',
+    ]
+    X_train = X_train[features_to_use]
+    X_test = X_test[features_to_use]
 
-    # Compute the classification report
-    from sklearn.metrics import classification_report   
-    classification_report = classification_report(y_test, y_test_predictions)
-    logger.info(f'Classification report of the model:')
-    logger.info(classification_report)
+    # train a lasso regression model
+    from src.model_factory import fit_lasso_regressor 
+    model = fit_lasso_regressor(
+        X_train,
+        y_train,
+        tune_hyper_params=False,
+    )
+    evaluate_model(
+        predictions=model.predict(X_test),
+        actuals=y_test,
+        description='Lasso regression model on Test data',
+    )
+    evaluate_model(
+        predictions=model.predict(X_train),
+        actuals=y_train,
+        description='Lasso regression model on Training data',
+    )
+
+    # train an XGBoost model
+    from src.model_factory import fit_xgboost_regressor
+    model = fit_xgboost_regressor(
+        X_train,
+        y_train,
+        tune_hyper_params=False,
+    )
+    evaluate_model(
+        predictions=model.predict(X_test),
+        actuals=y_test,
+        description='XGBoost regression model on Test data',
+    )
+    evaluate_model(
+        predictions=model.predict(X_train),
+        actuals=y_train,
+        description='XGBoost regression model on Training data',
+    )
 
     
+
+def evaluate_model(
+    predictions: pd.Series,
+    actuals: pd.Series,
+    description: Optional[str] = 'Model evaluation',
+):
+    """
+    Evaluates the model using accuracy, confusion matrix and classification report.
+
+    Args:
+        predictions (pd.Series): The predictions.
+        actuals (pd.Series): The actuals.
+        description (str): A description of the model and the data.
+
+    Returns:
+        Nothing.
+    """
+    logger.info('****' + description + '****')
+
+    # Let's evaluate our regresson model
+    # Compute Mean Absolute Error (MAE)
+    from sklearn.metrics import mean_absolute_error
+    mae = mean_absolute_error(actuals, predictions)
+    # log the mean absolute error with exponential notation
+    logger.info('Mean Absolute Error: %.4e' % mae)
 
 
 def split_train_test(
@@ -158,7 +229,7 @@ def split_train_test(
 def create_target_metric(
     ohlc_data: pd.DataFrame,
     ohlc_window_sec: int,
-    discretization_thresholds: list,
+    # discretization_thresholds: list,
     prediction_window_sec: int,
 ) -> pd.DataFrame:
     """
@@ -184,38 +255,9 @@ def create_target_metric(
 
     # create a new column with the percentage change in the close price n_candles_into_future
     ohlc_data['close_pct_change'] = ohlc_data['close'].pct_change(n_candles_into_future)
-
-    # TODO
-    # discretize the close_pct_change column using the discretization_thresholds
-    # Not sure how the cut function works, so I will stick to what I know for now
-    # Challenge: Check the documentation to see how the cut function works and use it
-    # https://pandas.pydata.org/docs/reference/api/pandas.cut.html
-    # ohlc_data['target'] = pd.cut(
-    #     ohlc_data['close_pct_change'],
-    #     bins=discretization_thresholds,
-    #     labels=range(len(discretization_thresholds) - 1),
-    # )
-    def discretize(x: float) -> int:
-        """
-        Maps the given percentage change `x` to a discrete value based on the thresholds.
-        """
-        if x < discretization_thresholds[0]:
-            # DOWN
-            return 0
-        elif x < discretization_thresholds[1]:
-            # SAME
-            return 1
-        elif x >= discretization_thresholds[1]:
-            # UP
-            return 2
-        else:
-            # This will happen if x is NaN
-            None
-        
-    ohlc_data['target'] = ohlc_data['close_pct_change'].apply(discretize)
     
     # shift the target column by n_candles_into_future to have the target for the current candle
-    ohlc_data['target'] = ohlc_data['target'].shift(-n_candles_into_future)
+    ohlc_data['target'] = ohlc_data['close_pct_change'].shift(-n_candles_into_future)
 
     # drop the close_pct_change column
     ohlc_data.drop(columns=['close_pct_change'], inplace=True)
@@ -285,10 +327,5 @@ if __name__ == '__main__':
         product_id='BTC/USD',
         last_n_days_to_fetch_from_store=90,
         last_n_days_to_test_model=7,
-        discretization_thresholds=[-0.0001, 0.0001],
         prediction_window_sec=60*5,
-   )
-
-
-
-
+    )

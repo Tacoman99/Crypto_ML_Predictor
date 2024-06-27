@@ -93,9 +93,41 @@ def train(
     logger.info('Distribution of the target in the testing data')
     logger.debug(ohlc_test['target'].value_counts())
 
+    # Before training, let's split the features and the target
+    X_train = ohlc_train.drop(columns=['target'])
+    y_train = ohlc_train['target']
+    X_test = ohlc_test.drop(columns=['target'])
+    y_test = ohlc_test['target']
+    
     # Step 5
     # TODO: build a ML model that given the features in ohlc_train (aka all columns except 'target')
     # predicts the target (aka ohlc_train['target'])
+    # Let's build a baseline model
+    from src.baseline_model import BaselineModel
+    model = BaselineModel(
+        n_candles_into_future=prediction_window_sec // ohlc_window_sec,
+        discretization_thresholds=discretization_thresholds,
+    )
+    y_test_predictions = model.predict(X_test)
+
+    # Let's evaluate the model. It is a classifier with 3 classes
+    # Compute accuracy using scikit-learn
+    from sklearn.metrics import accuracy_score
+    accuracy = accuracy_score(y_test, y_test_predictions)
+    logger.info(f'Accuracy of the model: {accuracy}')
+
+    # Compute the confusion matrix
+    from sklearn.metrics import confusion_matrix
+    confusion_matrix = confusion_matrix(y_test, y_test_predictions)
+    logger.info(f'Confusion matrix of the model:')
+    logger.info(confusion_matrix)
+
+    # Compute the classification report
+    from sklearn.metrics import classification_report   
+    classification_report = classification_report(y_test, y_test_predictions)
+    logger.info(f'Classification report of the model:')
+    logger.info(classification_report)
+
     
 
 

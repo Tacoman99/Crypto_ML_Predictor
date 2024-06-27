@@ -7,8 +7,12 @@ This is used both to
 
 ## TODOs
 
-- [ ] Fetch OHLC data from the Feature Store.
-- [ ] Visualize the data
-- [ ] Missing data imputation.
-- [ ] Create target metric we want to predict.
+- [x] Fetch OHLC data from the Feature Store.
+- [x] Visualize the data
+- [x] Missing data imputation.
+- [x] Create target metric we want to predict.
+
 - [ ] Build a baseline model.
+- [ ] Integrate with CometML
+- [ ] Feature engineering with talib
+- [ ] Build an ML model

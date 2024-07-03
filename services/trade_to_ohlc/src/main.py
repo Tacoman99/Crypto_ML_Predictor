@@ -7,7 +7,7 @@ from loguru import logger
 from quixstreams import Application
 
 # your own local packages
-from src.config import config
+from config import config
 
 
 def custom_ts_extractor(
@@ -164,7 +164,7 @@ def trade_to_ohlc(
 
 
 if __name__ == '__main__':
-    from src.config import config
+    from config import config
 
     trade_to_ohlc(
         kafka_input_topic=config.kafka_input_topic,

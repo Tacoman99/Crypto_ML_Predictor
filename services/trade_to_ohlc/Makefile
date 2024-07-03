@@ -1,9 +1,10 @@
+SHELL := /bin/bash
+export KAFKA_BROKER_ADDRESS := localhost:19092
+
 run-dev:
-	KAFKA_BROKER_ADDRESS='localhost:19092' \
 	source setup_live_config.sh && poetry run python src/main.py
 
 run-dev-historical:
-	KAFKA_BROKER_ADDRESS='localhost:19092' \
 	source setup_historical_config.sh && poetry run python src/main.py
 
 build:

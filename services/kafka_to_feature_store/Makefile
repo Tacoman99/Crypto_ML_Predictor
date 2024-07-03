@@ -1,3 +1,5 @@
+SHELL :=/bin/bash
+export KAFKA_BROKER_ADDRESS := localhost:19092
 run-dev:
 	KAFKA_BROKER_ADDRESS='localhost:19092' \
 	source setup_credentials.sh && \

@@ -1,3 +1,4 @@
+SHELL :=/bin/bash
 run-dev:
 	source setup_credentials.sh && \
 	source setup_config.sh && \

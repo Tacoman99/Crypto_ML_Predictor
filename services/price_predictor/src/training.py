@@ -50,6 +50,8 @@ def train(
         product_id=product_id,
         last_n_days=last_n_days_to_fetch_from_store,
     )
+    
+    #breakpoint()
 
     # add a column to ohlc_data with a human-readable data, using
     # the ohlc_data['timestamp'] column in milliseconds
@@ -62,7 +64,9 @@ def train(
         ohlc_data=ohlc_data,
         last_n_days_to_test_model=last_n_days_to_test_model,
     )
-
+    
+    breakpoint()
+    
     # Step 3
     # Preprocess the data for training and for testing
     # Interpolate missing candles
@@ -71,6 +75,8 @@ def train(
     logger.info('Interpolating missing candles for testing data')
     ohlc_test = interpolate_missing_candles(ohlc_test, ohlc_window_sec)
 
+    breakpoint()
+    
     # Step 4
     # Create the target metric as a new column in our dataframe for training and testing
     logger.info('Creating the target metric')
@@ -86,6 +92,8 @@ def train(
         # discretization_thresholds,
         prediction_window_sec,
     )
+    
+    breakpoint()
 
     # Before training, let's split the features and the target
     X_train = ohlc_train.drop(columns=['target'])
@@ -322,7 +330,7 @@ if __name__ == '__main__':
 
     train(
         feature_view_name='ohlc_feature_view',
-        feature_view_version=10,
+        feature_view_version=1,
         ohlc_window_sec=60,
         product_id='BTC/USD',
         last_n_days_to_fetch_from_store=90,

@@ -87,7 +87,7 @@ def get_features_from_the_store(
     # sort the features by timestamp (ascending)
     features = features.sort_values(by='timestamp')
 
-    # breakpoint()
+    #breakpoint()
 
     # Python trick: You can also do a sort inplace. I think with this you avoid copying data and it is
     # paster
@@ -110,7 +110,7 @@ def get_primary_keys(last_n_minutes: int) -> List[Dict]:
     
     # I've just sent the `kafka_to_feature_store` service pushing a candle for
     # this timestamp for BTC/USD. Let's see if we can actually read it from the online store.
-    # timestamps = [1719068640000]
+    #timestamps = [1720038300000]
 
     # primary keys are pairs of product_id and timestamp
     primary_keys = [
@@ -120,7 +120,7 @@ def get_primary_keys(last_n_minutes: int) -> List[Dict]:
         } for timestamp in timestamps
     ]
 
-    # breakpoint()
+    #breakpoint()
 
     return primary_keys
 
@@ -136,7 +136,7 @@ if __name__ == '__main__':
     if args.online and args.offline:
         raise ValueError('You cannot pass both --online and --offline')    
     online_or_offline = 'offline' if args.offline else 'online'
-    
+    #breakpoint()
     from loguru import logger
     data = get_features_from_the_store(online_or_offline)
     

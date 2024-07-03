@@ -217,7 +217,7 @@ if __name__ == '__main__':
 
     ohlc_data_reader = OhlcDataReader(
         feature_view_name='ohlc_feature_view',
-        feature_view_version=10,
+        feature_view_version=11,
         feature_group_name='ohlc_feature_group',
         feature_group_version=3,
         ohlc_window_sec=60

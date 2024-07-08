@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "src"
+name = "tools"
 version = "0.1.0"
 description = ""
 authors = ["Paulescu <plabartabajo@gmail.com>"]
@@ -7,19 +7,10 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"
+hopsworks = "^3.7.0"
 loguru = "^0.7.2"
-scikit-learn = "^1.5.0"
-xgboost = "^2.1.0"
-ta-lib = "^0.4.32"
-comet-ml = "^3.43.2"
-matplotlib = "^3.9.1"
-flask = "^3.0.3"
-tools = {path = "tools"}
-gunicorn = "^22.0.0"
+fire = "^0.6.0"
 
-
-[tool.poetry.group.dev.dependencies]
-jupyter = "^1.0.0"
 
 [build-system]
 requires = ["poetry-core"]

@@ -17,3 +17,14 @@ request:
 invalid-request:
 	curl -X POST http://127.0.0.1:5000/predict -H "Content-Type: application/json" -d '{"product_id":"ETH/USD"}'
 
+copy-tools:
+	cp -r ../../tools .
+
+build: copy-tools
+	docker build -t price-predictor-api .
+
+run: build
+	docker run \
+		--env-file ../credentials.env \
+		-p 5000:80 \
+		price-predictor-api

@@ -11,6 +11,11 @@ variables:
     description: kafka topic where we push ohlc data
     defaultValue: ohlc
     required: true
+  - name: KAFKA_CONSUMER_GROUP
+    inputType: FreeText
+    description: the consumer group we use to read data from kafka topic
+    defaultValue: trade_to_ohlc_consumer_group
+    required: true
 dockerfile: dockerfile
 runEntryPoint: main.py
 defaultFile: main.py

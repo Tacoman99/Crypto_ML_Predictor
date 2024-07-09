@@ -109,7 +109,6 @@ class Predictor:
             workspace=os.environ['COMET_ML_WORKSPACE'],
             model_name=get_model_name(product_id),
         )
-        
         # find the version for the current model with the given `status`
         # Here I am assuming there is only one model version for that status.
         # I recommend you only have 1 production model at a time.
@@ -182,12 +181,10 @@ class Predictor:
         """
         # Step 1: Fetch the latest data from the feature store
         logger.debug('Fetching OHLC data from the online feature store')
-        
         ohlc_data = self.ohlc_data_reader.read_from_online_store(
             product_id=self.product_id,
             last_n_minutes=self.last_n_minutes,
         )
-        
         ohlc_data['datetime'] = pd.to_datetime(ohlc_data['timestamp'], unit='ms')
 
         # Step 2: Preprocess the data

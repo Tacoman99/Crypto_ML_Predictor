@@ -28,3 +28,5 @@ run: build
 		--env-file ../credentials.env \
 		-p 5000:80 \
 		price-predictor-api
+request-production:
+	curl -X POST https://price-predictor-1-hirejorgecampos-cryptomlpredictor-production.deployments.quix.io/predict -H "Content-Type: application/json" -d '{"product_id":"BTC/USD"}'

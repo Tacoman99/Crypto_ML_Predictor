@@ -1,0 +1,6 @@
+name: src
+language: python
+variables: []
+dockerfile: Dockerfile
+runEntryPoint: main.py
+defaultFile: main.py

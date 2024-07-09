@@ -11,6 +11,11 @@ variables:
     description: List of product_ids we fetch from kraken api
     defaultValue: "'[\"BTC/USD\",\"ETH/EUR\",\"ETH/USD\"]'"
     required: true
+  - name: LIVE_OR_HISTORICAL
+    inputType: FreeText
+    description: whether we connect to Kraken Websocket for live or historical data
+    defaultValue: live
+    required: true
 dockerfile: Dockerfile
 runEntryPoint: main.py
 defaultFile: main.py

@@ -1,6 +1,11 @@
 name: kafka_to_feature_store
 language: python
-variables: []
+variables:
+  - name: KAFKA_TOPIC
+    inputType: InputTopic
+    description: ''
+    defaultValue: ohlc
+    required: true
 dockerfile: Dockerfile
 runEntryPoint: main.py
 defaultFile: main.py

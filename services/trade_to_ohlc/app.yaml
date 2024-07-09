@@ -1,6 +1,11 @@
 name: trade_to_ohlc
 language: python
-variables: []
+variables:
+  - name: KAFKA_INPUT_TOPIC
+    inputType: InputTopic
+    description: ''
+    defaultValue: trade
+    required: true
 dockerfile: dockerfile
 runEntryPoint: main.py
 defaultFile: main.py

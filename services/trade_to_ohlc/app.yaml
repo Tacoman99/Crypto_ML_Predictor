@@ -6,6 +6,11 @@ variables:
     description: ''
     defaultValue: trade
     required: true
+  - name: KAFKA_OUTPUT_TOPIC
+    inputType: OutputTopic
+    description: kafka topic where we push ohlc data
+    defaultValue: ohlc
+    required: true
 dockerfile: dockerfile
 runEntryPoint: main.py
 defaultFile: main.py

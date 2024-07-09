@@ -16,6 +16,11 @@ variables:
     description: ''
     defaultValue: comet_workspace
     required: true
+  - name: COMET_ML_PROJECT_NAME
+    inputType: Secret
+    description: ''
+    defaultValue: comet_projectname
+    required: true
 dockerfile: Dockerfile
 runEntryPoint: main.py
 defaultFile: main.py

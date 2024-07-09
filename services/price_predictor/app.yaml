@@ -11,6 +11,11 @@ variables:
     description: ''
     defaultValue: hopsworks_api_key
     required: true
+  - name: COMET_ML_WORKSPACE
+    inputType: Secret
+    description: ''
+    defaultValue: comet_workspace
+    required: true
 dockerfile: Dockerfile
 runEntryPoint: main.py
 defaultFile: main.py

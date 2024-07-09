@@ -21,6 +21,6 @@ variables:
     description: Number of seconds of OHLC candles
     defaultValue: 60
     required: true
-dockerfile: dockerfile
+dockerfile: Dockerfile
 runEntryPoint: main.py
 defaultFile: main.py

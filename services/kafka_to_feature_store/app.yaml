@@ -1,6 +1,6 @@
 name: kafka_to_feature_store
 language: python
 variables: []
-dockerfile: dockerfile
+dockerfile: Dockerfile
 runEntryPoint: main.py
 defaultFile: main.py

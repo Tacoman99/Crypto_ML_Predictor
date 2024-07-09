@@ -76,6 +76,9 @@ def kafka_to_feature_store(
         # auto_offset_reset='latest',
     )
 
+    #lets connect the app to the input topic
+    topic = app.topic(name=kafka_topic, value_serializer = 'json')
+
     # get current UTC time in seconds
     last_saved_to_feature_store_ts = get_current_utc_sec()
 
@@ -87,7 +90,7 @@ def kafka_to_feature_store(
 
     # Create a consumer and start a polling loop
     with app.get_consumer() as consumer:
-        consumer.subscribe(topics=[kafka_topic])
+        consumer.subscribe(topics=[topic.name])
 
         while True:
             msg = consumer.poll(1)

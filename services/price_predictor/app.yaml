@@ -1,4 +1,4 @@
-name: price_predictor
+name: price_predictorgit
 language: python
 variables: []
 dockerfile: Dockerfile

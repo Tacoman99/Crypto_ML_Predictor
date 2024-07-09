@@ -21,6 +21,11 @@ variables:
     description: ''
     defaultValue: 1
     required: false
+  - name: BUFFER_SIZE
+    inputType: FreeText
+    description: 1
+    defaultValue: ''
+    required: true
 dockerfile: Dockerfile
 runEntryPoint: main.py
 defaultFile: main.py

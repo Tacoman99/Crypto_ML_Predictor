@@ -16,6 +16,11 @@ variables:
     description: the consumer group we use to read data from kafka topic
     defaultValue: trade_to_ohlc_consumer_group
     required: true
+  - name: OHLC_WINDOW_SECONDS
+    inputType: FreeText
+    description: Number of seconds of OHLC candles
+    defaultValue: 60
+    required: true
 dockerfile: dockerfile
 runEntryPoint: main.py
 defaultFile: main.py

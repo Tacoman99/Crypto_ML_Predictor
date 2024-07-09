@@ -1,4 +1,4 @@
-cname:trade_to_ohlc
+name: trade_to_ohlc
 language: python
 variables: []
 dockerfile: dockerfile

@@ -11,6 +11,11 @@ variables:
     description: ''
     defaultValue: ohlc_consumer_group
     required: true
+  - name: FEATURE_GROUP_NAME
+    inputType: FreeText
+    description: ''
+    defaultValue: ohlc_feature_group
+    required: true
 dockerfile: Dockerfile
 runEntryPoint: main.py
 defaultFile: main.py

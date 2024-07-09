@@ -1,0 +1,6 @@
+name: price_predictor
+language: python
+variables: []
+dockerfile: Dockerfile
+runEntryPoint: main.py
+defaultFile: main.py

@@ -10,7 +10,7 @@ variables:
     inputType: FreeText
     description: ''
     defaultValue: ohlc_consumer_group
-    required: false
+    required: true
 dockerfile: Dockerfile
 runEntryPoint: main.py
 defaultFile: main.py

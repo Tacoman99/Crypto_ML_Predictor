@@ -1,4 +1,4 @@
-name: src
+name: kafka_to_feature_store
 language: python
 variables: []
 dockerfile: dockerfile

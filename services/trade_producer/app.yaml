@@ -1,6 +1,11 @@
 name: trade_producer
 language: python
-variables: []
+variables:
+  - name: KAFKA_TOPIC
+    inputType: OutputTopic
+    description: the kafka topic where we save the trade too
+    defaultValue: trade
+    required: true
 dockerfile: Dockerfile
 runEntryPoint: main.py
 defaultFile: main.py
